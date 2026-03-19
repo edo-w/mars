@@ -1,0 +1,18 @@
+# https://lefthook.dev/configuration/
+
+pre-commit:
+  jobs:
+    - run: bun run fmt
+    - run: bun run lint {staged_files}
+      glob: "**/*.{ts,tsx,js,jsx}"
+      exclude: "*.config.{js,mjs}"
+    - run: bun run build
+    - run: bun run test
+      glob: "**/*.{ts,tsx,js,jsx}"
+      exclude: "*.config.{js,mjs}"
+
+commit-msg:
+  commands:
+    commitlint:
+      run: bun commitlint --edit "$1"
+

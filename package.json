@@ -1,0 +1,23 @@
+{
+  "name": "mars",
+  "module": "index.ts",
+  "scripts": {
+    "fmt": "biome format --write",
+    "lint": "biome lint --write",
+	"check": "tsgo",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.8",
+    "@changesets/cli": "^2.30.0",
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
+    "@openai/codex": "^0.115.0",
+    "@types/bun": "latest",
+    "@typescript/native-preview": "^7.0.0-dev.20260319.1",
+    "vite": "^8.0.1",
+    "vitest": "^4.1.0"
+  },
+  "private": true,
+  "type": "module"
+}
