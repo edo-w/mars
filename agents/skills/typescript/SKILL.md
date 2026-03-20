@@ -31,6 +31,10 @@ Use this skill for any TypeScript implementation in this repository.
 
 - Use ESM imports and exports.
 - Prefer named exports in application code.
+- Prefer `export function foo(...) {}` for exported functions instead of
+  `export const foo = (...) => {}` unless there is a clear reason to use a
+  function expression, such as callbacks, closures, or higher-order function
+  composition.
 - Order imports as built-in runtime imports first, then package imports, then
   project imports.
 - Keep import blocks compact with no extra blank lines between import

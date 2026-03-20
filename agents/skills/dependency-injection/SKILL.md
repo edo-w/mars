@@ -95,6 +95,8 @@ tiny.addScopedFactory(UserService, (t) => {
 - Prefer constructor injection for core dependencies.
 - Use typed keys instead of stringly typed ad hoc lookups.
 - Keep registration code centralized and predictable.
+- Do not pass hand-assembled dependency bags into command handlers when those
+  values should come from the container.
 - Avoid hidden DI behavior or implicit dependency discovery.
 - Keep DI setup separate from business logic.
 

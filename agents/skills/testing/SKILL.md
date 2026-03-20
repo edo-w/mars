@@ -10,9 +10,12 @@ Use this skill for any test work in this repository.
 ## Test Stack
 
 - Use Vitest for tests.
-- Use `test`, `expect`, and `vi` from `vitest` as needed.
-- App-side tests may use `assert(...)` when that keeps assertions simpler and
-  more direct.
+- Prefer flat `test(...)` blocks as the default test structure.
+- Prefer `node:assert/strict` assertion functions over `expect(...)` style
+  assertions for readability.
+- Use `suite(...)` only when grouping adds real value beyond the test file
+  itself.
+- Use `vi` from `vitest` as needed.
 
 ## Test File Naming
 
@@ -32,6 +35,13 @@ This keeps the Zod schema and runtime validation behavior honest.
 
 - Prefer flat tests and avoid nesting unless it is genuinely necessary.
 - The test file is usually the natural grouping boundary.
+- Do not add `describe(...)` blocks by default when the file already provides
+  enough grouping context.
+- Do not test logging output or logger call details unless logging behavior is
+  itself the thing under test.
+- Prefer assigning meaningful local variables before assertions instead of
+  embedding boolean checks, lookups, or larger expressions directly inside the
+  assertion call.
 - Prefer explicit assertion messages when the failure would otherwise be
   unclear.
 - Prefer `vi.fn()` for simple collaborator test doubles.

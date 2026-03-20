@@ -15,6 +15,8 @@ This project uses Logtape for application logging.
 - Prefer Logtape over `console.log(...)`.
 - Use `console.log(...)` only when code must write directly to the console
   surface for a specific reason.
+- Do not pass `stdout` or `stderr` around command handlers and services as an
+  ad hoc logging mechanism.
 - Logging setup belongs in boot code, not in feature services or command
   handlers.
 - Command handlers and services should only get a logger and use it.
@@ -24,6 +26,8 @@ This project uses Logtape for application logging.
 - Import `getLogger` from `@logtape/logtape`.
 - Create loggers with stable category arrays.
 - Reuse categories that reflect the area of the app, command, or feature.
+- Do not register loggers in Tiny by default; code that needs a logger should
+  create it directly with `getLogger(...)`.
 
 Example:
 

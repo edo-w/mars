@@ -50,6 +50,8 @@ Each command file should contain:
 - Parse the raw options into the command input class first.
 - In normal Mars code, the handler should use Tiny to resolve dependencies and
   services from the container.
+- Do not wire command handlers by passing ad hoc dependency objects from boot
+  when those dependencies belong in Tiny.
 - Keep DI resolution in the handler or in code called by the handler, not in
   the Commander wiring itself.
 - Use Logtape via `getLogger(...)` inside the handler when command logging is
