@@ -1,0 +1,4 @@
+namespace: "app"
+name: "dev"
+aws_account_id: "593793022591"
+aws_region: "us-east-2"

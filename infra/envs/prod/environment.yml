@@ -1,0 +1,4 @@
+name: prod
+namespace: app
+aws_account_id: TODO
+aws_region: TODO
