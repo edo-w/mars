@@ -66,6 +66,12 @@ Use this skill for any TypeScript implementation in this repository.
   `interface` declarations for each result variant and then compose them into a
   final union `type` alias, instead of writing large inline object members
   directly inside the union.
+- Prefer result variants that describe the feature or operation outcome at the
+  right abstraction level. Do not make top-level result unions overly specific
+  to a single sub-resource when the operation itself is broader.
+- When an operation affects multiple resources, model those resources as a
+  separate shared shape and attach per-resource status there, instead of
+  exploding the top-level result union into one variant per resource outcome.
 - All JSON data should use `snake_case`.
 - Date and timestamp fields should use the `name_date` pattern.
 

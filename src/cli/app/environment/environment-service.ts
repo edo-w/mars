@@ -1,7 +1,10 @@
 import path from 'node:path';
 import {
 	CreateBucketCommand,
+	DeleteBucketCommand,
+	DeleteObjectsCommand,
 	HeadBucketCommand,
+	ListObjectsV2Command,
 	PutBucketEncryptionCommand,
 	PutBucketPolicyCommand,
 	PutPublicAccessBlockCommand,
@@ -10,9 +13,11 @@ import {
 import { parse, stringify } from 'yaml';
 import {
 	type BootstrapEnvironmentBucketResult,
+	type DestroyEnvironmentResult,
 	ENVIRONMENT_FILE,
 	type Environment,
 	EnvironmentConfig,
+	type EnvironmentResource,
 } from '#src/cli/app/environment/environment-shapes';
 import type { StateService } from '#src/cli/app/state/state-service';
 import { type MarsConfig, readMarsConfig } from '#src/cli/boot/config';
@@ -71,8 +76,14 @@ export class EnvironmentService {
 		return environments.find((environment) => environment.id === name) ?? null;
 	}
 
+	async describeDestroy(environment: Environment): Promise<EnvironmentResource[]> {
+		const bucket = await this.getBucketName(environment);
+
+		return this.getDestroyResources(bucket);
+	}
+
 	async bootstrap(name: string | null): Promise<BootstrapEnvironmentBucketResult> {
-		const environment = await this.resolveForBootstrap(name);
+		const environment = await this.resolveEnvironment(name);
 
 		if (environment === null) {
 			if (name === null) {
@@ -88,7 +99,7 @@ export class EnvironmentService {
 		}
 
 		const config = await readMarsConfig(this.vfs);
-		const bucket = this.renderBootstrapBucketName(environment, config);
+		const bucket = this.renderEnvironmentBucketName(environment, config);
 
 		if (await this.bucketExists(bucket)) {
 			return {
@@ -106,6 +117,63 @@ export class EnvironmentService {
 			bucket,
 			kind: 'created',
 		};
+	}
+
+	async destroy(name: string | null): Promise<DestroyEnvironmentResult> {
+		const environment = await this.resolveEnvironment(name);
+
+		if (environment === null) {
+			if (name === null) {
+				return {
+					kind: 'not_selected',
+				};
+			}
+
+			return {
+				kind: 'not_found',
+				name,
+			};
+		}
+
+		const bucket = await this.getBucketName(environment);
+		const resources: EnvironmentResource[] = [];
+
+		try {
+			if (!(await this.bucketExists(bucket))) {
+				resources.push({
+					kind: 's3_bucket',
+					label: `s3 bucket "${bucket}"`,
+					status: 'not_found',
+				});
+
+				return {
+					environment,
+					kind: 'success',
+					resources,
+				};
+			}
+
+			await this.emptyBucket(bucket);
+			await this.deleteBucket(bucket);
+			resources.push({
+				kind: 's3_bucket',
+				label: `s3 bucket "${bucket}"`,
+				status: 'destroy',
+			});
+
+			return {
+				environment,
+				kind: 'success',
+				resources,
+			};
+		} catch (error) {
+			return {
+				environment,
+				error,
+				kind: 'fail',
+				resources,
+			};
+		}
 	}
 
 	async getCurrent(): Promise<Environment | null> {
@@ -177,6 +245,20 @@ export class EnvironmentService {
 			id: config.id,
 			selected: normalizedConfigPath === selectedEnvironmentPath,
 		};
+	}
+
+	async getBucketName(environment: Environment): Promise<string> {
+		const config = await readMarsConfig(this.vfs);
+
+		return this.renderEnvironmentBucketName(environment, config);
+	}
+
+	async resolveEnvironment(name: string | null): Promise<Environment | null> {
+		if (name !== null) {
+			return this.get(name);
+		}
+
+		return this.getCurrent();
 	}
 
 	private async createBucket(bucket: string): Promise<void> {
@@ -261,20 +343,66 @@ export class EnvironmentService {
 		}
 	}
 
-	private renderBootstrapBucketName(environment: Environment, config: MarsConfig): string {
+	private async deleteBucket(bucket: string): Promise<void> {
+		await this.s3Client.send(
+			new DeleteBucketCommand({
+				Bucket: bucket,
+			}),
+		);
+	}
+
+	private async emptyBucket(bucket: string): Promise<void> {
+		let continuationToken: string | undefined;
+
+		do {
+			const result = await this.s3Client.send(
+				new ListObjectsV2Command({
+					Bucket: bucket,
+					ContinuationToken: continuationToken,
+				}),
+			);
+			const objectKeys =
+				result.Contents?.flatMap((object) => {
+					return object.Key === undefined
+						? []
+						: [
+								{
+									Key: object.Key,
+								},
+							];
+				}) ?? [];
+
+			if (objectKeys.length > 0) {
+				await this.s3Client.send(
+					new DeleteObjectsCommand({
+						Bucket: bucket,
+						Delete: {
+							Objects: objectKeys,
+						},
+					}),
+				);
+			}
+
+			continuationToken = result.IsTruncated ? result.NextContinuationToken : undefined;
+		} while (continuationToken !== undefined);
+	}
+
+	private getDestroyResources(bucket: string): EnvironmentResource[] {
+		return [
+			{
+				kind: 's3_bucket',
+				label: `s3 bucket "${bucket}"`,
+				status: 'destroy',
+			},
+		];
+	}
+
+	private renderEnvironmentBucketName(environment: Environment, config: MarsConfig): string {
 		return config.env_bucket
 			.replaceAll('{namespace}', config.namespace)
 			.replaceAll('{env_name}', environment.config.name)
 			.replaceAll('{env}', environment.id)
 			.replaceAll('{aws_account_id}', environment.config.aws_account_id)
 			.replaceAll('{aws_region}', environment.config.aws_region);
-	}
-
-	private async resolveForBootstrap(name: string | null): Promise<Environment | null> {
-		if (name !== null) {
-			return this.get(name);
-		}
-
-		return this.getCurrent();
 	}
 }

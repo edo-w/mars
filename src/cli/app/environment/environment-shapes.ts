@@ -37,6 +37,12 @@ export interface Environment {
 	selected: boolean;
 }
 
+export interface EnvironmentResource {
+	kind: 's3_bucket';
+	label: string;
+	status: 'destroy' | 'not_found';
+}
+
 export interface BootstrapEnvironmentAlreadyExistsResult {
 	kind: 'already_exists';
 	bucket: string;
@@ -61,3 +67,31 @@ export type BootstrapEnvironmentBucketResult =
 	| BootstrapEnvironmentCreatedResult
 	| BootstrapEnvironmentNotFoundResult
 	| BootstrapEnvironmentNotSelectedResult;
+
+export interface DestroyEnvironmentSuccessResult {
+	kind: 'success';
+	environment: Environment;
+	resources: EnvironmentResource[];
+}
+
+export interface DestroyEnvironmentFailResult {
+	error: unknown;
+	kind: 'fail';
+	environment: Environment;
+	resources: EnvironmentResource[];
+}
+
+export interface DestroyEnvironmentNotFoundResult {
+	kind: 'not_found';
+	name: string;
+}
+
+export interface DestroyEnvironmentNotSelectedResult {
+	kind: 'not_selected';
+}
+
+export type DestroyEnvironmentResult =
+	| DestroyEnvironmentSuccessResult
+	| DestroyEnvironmentFailResult
+	| DestroyEnvironmentNotFoundResult
+	| DestroyEnvironmentNotSelectedResult;

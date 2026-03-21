@@ -54,9 +54,12 @@ export async function handleEnvShowCommand(fields: unknown, container: Tiny): Pr
 		return;
 	}
 
+	const envBucket = await service.getBucketName(environment);
+
 	logger.info(`path: ./${environment.directoryPath}`);
 	logger.info(`name: ${environment.config.name}`);
 	logger.info(`namespace: ${environment.config.namespace}`);
 	logger.info(`aws_account_id: ${environment.config.aws_account_id}`);
 	logger.info(`aws_region: ${environment.config.aws_region}`);
+	logger.info(`env_bucket: ${envBucket}`);
 }
