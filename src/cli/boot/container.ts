@@ -1,6 +1,8 @@
 import { Tiny } from '@edo-w/tiny';
+import { EnvironmentService } from '#src/cli/app/environment/environment-service';
 import { InitService } from '#src/cli/app/init/init-service';
-import { IVfs, NodeVfs } from '#src/lib/vfs';
+import { StateService } from '#src/cli/app/state/state-service';
+import { Vfs } from '#src/lib/vfs';
 
 export interface CreateContainerOptions {
 	cwd: string;
@@ -9,10 +11,12 @@ export interface CreateContainerOptions {
 export function createContainer(options: CreateContainerOptions): Tiny {
 	const container = new Tiny();
 
-	container.addSingletonFactory(IVfs, () => {
-		return new NodeVfs(options.cwd);
+	container.addSingletonFactory(Vfs, () => {
+		return new Vfs(options.cwd);
 	});
-	container.addScopedClass(InitService, [IVfs]);
+	container.addScopedClass(InitService, [Vfs]);
+	container.addScopedClass(StateService, [Vfs]);
+	container.addScopedClass(EnvironmentService, [Vfs, StateService]);
 
 	return container;
 }

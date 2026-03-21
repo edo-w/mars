@@ -54,11 +54,11 @@ export const verboseFormatter: TextFormatter = (record) => {
 };
 
 export const minimalFormatter: TextFormatter = (record) => {
-	const time = new Date(record.timestamp);
-	const hour = time.getHours().toString().padStart(2, '0');
-	const minute = time.getMinutes().toString().padStart(2, '0');
-	const second = time.getSeconds().toString().padStart(2, '0');
-	const millisecond = time.getMilliseconds().toString().padStart(3, '0');
+	// const time = new Date(record.timestamp);
+	// const hour = time.getHours().toString().padStart(2, '0');
+	// const minute = time.getMinutes().toString().padStart(2, '0');
+	// const second = time.getSeconds().toString().padStart(2, '0');
+	// const millisecond = time.getMilliseconds().toString().padStart(3, '0');
 
 	let levelColor: InspectColor = 'gray';
 
@@ -89,10 +89,10 @@ export const minimalFormatter: TextFormatter = (record) => {
 		}
 	}
 
-	const timeText = util.styleText('gray', `${hour}:${minute}:${second}.${millisecond}`);
-	const separatorText = util.styleText(levelColor, '|');
+	// const timeText = util.styleText('gray', `${hour}:${minute}:${second}.${millisecond}`);
+	const separatorText = util.styleText(levelColor, '│');
 
-	return `${timeText} ${separatorText} ${record.message}`;
+	return `${separatorText} ${record.message}`;
 };
 
 export async function configureLogging(): Promise<void> {

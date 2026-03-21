@@ -14,6 +14,8 @@ This project uses `@edo-w/tiny` for dependency injection.
 
 - Create containers with `new Tiny()`.
 - Use typed keys from `createKey<T>()` for non-class dependencies.
+- When a dependency is already represented by a concrete class, use that class
+  itself as the Tiny key instead of introducing a duplicate interface and key.
 - Resolve dependencies with `tiny.get(...)`.
 - Create child scopes with `tiny.createScope()` when scoped resolution is
   needed.
@@ -39,6 +41,10 @@ Tiny supports three main registration styles:
 - Use `createKey<T>('name')` for config objects or other non-class values.
 - Register key-based values with `addInstance(...)` or a factory method.
 - Resolve key-based values with `tiny.get(KeyName)`.
+- Define keys next to the interface or contract they represent rather than
+  collocating them in unrelated container files.
+- Prefix key names with `I` only when a dedicated key is actually needed for a
+  non-class contract.
 
 ## Lifetimes
 
@@ -94,6 +100,8 @@ tiny.addScopedFactory(UserService, (t) => {
 
 - Prefer constructor injection for core dependencies.
 - Use typed keys instead of stringly typed ad hoc lookups.
+- Avoid duplicate interface-plus-key layers when a concrete class already
+  expresses the contract cleanly.
 - Keep registration code centralized and predictable.
 - Do not pass hand-assembled dependency bags into command handlers when those
   values should come from the container.

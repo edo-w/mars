@@ -1,20 +1,7 @@
 import fsp from 'node:fs/promises';
 import path from 'node:path';
-import { createKey } from '@edo-w/tiny';
 
-export interface Vfs {
-	cwd: string;
-	directoryExists(targetPath: string): Promise<boolean>;
-	ensureDirectory(targetPath: string): Promise<void>;
-	fileExists(targetPath: string): Promise<boolean>;
-	readTextFile(targetPath: string): Promise<string>;
-	resolve(...pathParts: string[]): string;
-	writeTextFile(targetPath: string, contents: string): Promise<void>;
-}
-
-export const IVfs = createKey<Vfs>('IVfs');
-
-export class NodeVfs implements Vfs {
+export class Vfs {
 	cwd: string;
 
 	constructor(cwd: string) {
@@ -50,6 +37,18 @@ export class NodeVfs implements Vfs {
 			}
 
 			return false;
+		}
+	}
+
+	async listDirectory(targetPath: string): Promise<string[]> {
+		try {
+			return await fsp.readdir(this.resolve(targetPath));
+		} catch (error) {
+			if (!isMissingPathError(error)) {
+				throw error;
+			}
+
+			return [];
 		}
 	}
 

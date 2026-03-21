@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { test } from 'vitest';
-import { isMissingPathError, NodeVfs } from '#src/lib/vfs';
+import { isMissingPathError, Vfs } from '#src/lib/vfs';
 
 test('isMissingPathError returns true for ENOENT errors', () => {
 	const error = new Error('missing') as NodeJS.ErrnoException;
@@ -11,10 +11,12 @@ test('isMissingPathError returns true for ENOENT errors', () => {
 	assert.equal(isMissingPathError(error), true);
 });
 
-test('NodeVfs resolves paths from cwd', () => {
-	const vfs = new NodeVfs('/repo');
+test('Vfs resolves paths from cwd', () => {
+	const vfs = new Vfs('/repo');
+	const configPath = vfs.resolve('mars.config.json');
+	const expectedPath = path.resolve('/repo', 'mars.config.json');
 
-	assert.equal(vfs.resolve('mars.config.json'), path.resolve('/repo', 'mars.config.json'));
+	assert.equal(configPath, expectedPath);
 });
 
 test('isMissingPathError returns false for non-ENOENT errors', () => {

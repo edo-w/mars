@@ -43,6 +43,7 @@ Use this skill for any TypeScript implementation in this repository.
   `import path from 'node:path'`.
 - Use project subpath imports such as `#src/...` and `#test/...` instead of
   deep relative paths when available.
+- Do not include file extensions like `.ts` in project subpath imports.
 - Avoid circular imports between services, repos, models, and shapes.
 
 ## Data Shapes And Contracts
@@ -96,6 +97,12 @@ class ExampleRecord {
   using `ReturnType<...>`.
 - Use library types directly instead of recreating local minimal interfaces for
   them.
+- Avoid inline object type annotations for internal helpers and local
+  functions when TypeScript can infer the shape clearly.
+- If an explicit object type is truly needed, define a separate `interface`
+  instead of writing an inline object type annotation at the callsite or
+  function signature, except in rare cases where the inline form is genuinely
+  simpler.
 - Do not use the broad `Function` type.
 - Avoid dense inline transformations that are hard to scan.
 - When mapping or conversion has real logic, assign it to a local variable
@@ -108,6 +115,14 @@ class ExampleRecord {
   operations that should all be awaited.
 
 ## Validation
+
+In this repository:
+
+- `bun run lint` is the all-in-one Biome pass and covers formatting, lint
+  rules, and import sorting.
+- `bun run fmt` remains available when you want formatting-only cleanup without
+  lint output.
+- `bun run check` is the TypeScript check.
 
 After implementing TypeScript changes, run:
 

@@ -11,7 +11,8 @@ wiring.
 
 ## Boot Folder
 
-- Put startup helpers under `src/boot/`.
+- Put startup helpers under the app-specific boot folder such as
+  `src/cli/boot/`, `src/web/boot/`, or `src/service/boot/`.
 - Use boot code for setup, initialization, and top-level wiring.
 - Keep logging setup, config loading, dependency construction, DB setup, and
   program assembly in boot helpers when they belong to startup flow.
@@ -38,6 +39,8 @@ Typical shape:
 - Prefer boot helpers with explicit names such as `configureLogging()`,
   `createMarsDeps()`, or `createProgram()`.
 - Use the boot layer as the place where app-wide wiring becomes explicit.
+- Put feature or app behavior under the app layer such as `src/cli/app/...`,
+  not inside boot helpers.
 
 ## Validation
 

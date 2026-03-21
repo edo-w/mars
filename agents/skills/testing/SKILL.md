@@ -47,6 +47,23 @@ This keeps the Zod schema and runtime validation behavior honest.
 - Prefer `vi.fn()` for simple collaborator test doubles.
 - When the same mock shape is reused across multiple tests, extract a shared
   mock factory under the relevant test support folder.
+- When multiple tests share the same object graph or service wiring, prefer a
+  local `sut()` helper that returns the system under test plus the common
+  collaborators the tests need.
+- Keep the `sut()` helper focused on the shared object construction. Leave
+  test-specific state and data setup inside the individual test unless it is
+  truly identical everywhere.
+- Place the `sut()` helper near the top of the test file before the tests so
+  readers see the shared setup first and then the individual test cases.
+- For module-local `sut()` helpers, prefer letting TypeScript infer the return
+  shape instead of adding an inline object return annotation.
+- If a shared test helper truly needs an explicit return type, define a
+  separate interface instead of using an inline object type annotation.
+- For reusable class-shaped mocks, prefer the `PublicLike<T>` pattern so tests
+  implement the public contract of the real class without introducing duplicate
+  source interfaces just for testing.
+- Put reusable test mocks under `test/mocks/` and reusable helpers under
+  `test/helpers/`.
 
 ## Test Structure
 

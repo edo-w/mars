@@ -3,7 +3,7 @@
 	"module": "index.ts",
 	"scripts": {
 		"fmt": "biome format --write",
-		"lint": "biome lint --write",
+		"lint": "biome check --write",
 		"check": "tsgo",
 		"test": "vitest run",
 		"mars": "bun src/cli/main.ts",
@@ -26,6 +26,8 @@
 		"@edo-w/tiny": "^0.2.0",
 		"@logtape/logtape": "^2.0.4",
 		"commander": "^14.0.3",
+		"enquirer": "^2.4.1",
+		"yaml": "^2.8.2",
 		"zod": "^4.3.6"
 	}
 }

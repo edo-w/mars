@@ -62,12 +62,20 @@ For every code change, agents should follow this order:
 1. Read the relevant feature spec in `features/` when available.
 2. Read the relevant local skill files in `agents/skills/`.
 3. Implement the code change.
-4. Run formatting.
+4. Run formatting when needed.
 5. Run linting.
 6. Run typescript checks.
 7. Run tests.
 8. Only finish once the change is validated or any remaining issue is clearly
    reported.
+
+### Validation Notes
+
+- `bun run lint` is the main Biome verification pass in this repository.
+- `bun run lint` runs formatter, lint rules, and import organization together.
+- `bun run fmt` is still available as a formatting-only pass when you want to
+  clean up formatting without mixing in lint output.
+- `bun run check` is the TypeScript checking pass.
 
 ## Required Commands
 

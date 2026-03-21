@@ -10,11 +10,11 @@ Use this skill when adding or changing CLI commands in this repository.
 
 ## File Layout
 
-- Store command files under `src/commands/`.
+- Store CLI command files under `src/cli/commands/`.
 - Keep the command list generally flat.
 - Name command files by command purpose, for example:
-  - `src/commands/ssh-key-create-command.ts`
-  - `src/commands/ssh-key-get-command.ts`
+  - `src/cli/commands/ssh-key-create-command.ts`
+  - `src/cli/commands/ssh-key-get-command.ts`
 - Use nested Commander subcommands for user-facing organization instead of
   deeply nested source folders.
 
@@ -35,6 +35,12 @@ Each command file should contain:
 - Keep command input validation at the command boundary.
 - Use `snake_case` field names for command input objects when they represent
   validated contract data.
+- Do not add a no-op input class or empty schema when a command has no options
+  or arguments yet.
+- Normalize Commander-provided values into the exact shape the input schema
+  expects before constructing the input class.
+- In particular, optional Commander arguments may arrive as `undefined`; convert
+  them to `null` when the schema expects `string | null`.
 
 ## Command Factory Rules
 
@@ -61,9 +67,9 @@ Each command file should contain:
 ## Program Assembly
 
 - Assemble top-level commands in a dedicated boot helper such as
-  `src/boot/program.ts`.
+  `src/cli/boot/cli.ts`.
 - Create top-level namespaces with Commander subcommands.
-- Add leaf commands from `src/commands/` into those subcommands.
+- Add leaf commands from `src/cli/commands/` into those subcommands.
 - Return the fully configured root `Command`.
 
 This pattern keeps the CLI scalable while preserving a flat command file list.
