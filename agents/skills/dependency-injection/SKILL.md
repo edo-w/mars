@@ -72,12 +72,20 @@ Choose lifetimes intentionally:
 - Use factories when object creation needs logic beyond constructor injection.
 - Resolve factory dependencies through the provided Tiny container instance.
 - Keep factories small and focused on assembly.
+- When a factory resolves multiple dependencies, assign them to named local
+  variables before constructing the final object instead of inlining multiple
+  `t.get(...)` calls inside a constructor call.
+- Prefer this pattern for readability even when the constructor call would fit
+  on one line.
 
 Example:
 
 ```ts
 tiny.addScopedFactory(UserService, (t) => {
-  return new UserService(t.get(UserRepository), t.get(Logger));
+  const userRepository = t.get(UserRepository);
+  const logger = t.get(Logger);
+
+  return new UserService(userRepository, logger);
 });
 ```
 

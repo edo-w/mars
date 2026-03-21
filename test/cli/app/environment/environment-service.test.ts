@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { test } from 'vitest';
+import { HeadBucketCommand, S3Client } from '@aws-sdk/client-s3';
+import { test, vi } from 'vitest';
 import { stringify } from 'yaml';
 import { EnvironmentService } from '#src/cli/app/environment/environment-service';
 import { StateService } from '#src/cli/app/state/state-service';
@@ -9,9 +10,13 @@ import { MockVfs } from '#test/mocks/mock-vfs';
 function sut() {
 	const vfs = new MockVfs();
 	const stateService = new StateService(vfs);
-	const service = new EnvironmentService(vfs, stateService);
+	const s3Client = new S3Client({
+		region: 'us-east-1',
+	});
+	const service = new EnvironmentService(vfs, stateService, s3Client);
 
 	return {
+		s3Client,
 		service,
 		vfs,
 	};
@@ -22,6 +27,7 @@ test('EnvironmentService lists environments from envs_path', async () => {
 	const marsConfig = toJsonText({
 		namespace: 'gl',
 		envs_path: 'infra/envs',
+		env_bucket: '{env}-infra-{aws_account_id}',
 		work_path: '.mars',
 	});
 	const devEnvironment = stringify({
@@ -52,6 +58,7 @@ test('EnvironmentService marks the selected environment during list', async () =
 	const marsConfig = toJsonText({
 		namespace: 'gl',
 		envs_path: 'infra/envs',
+		env_bucket: '{env}-infra-{aws_account_id}',
 		work_path: '.mars',
 	});
 	const stateFile = toJsonText({
@@ -79,6 +86,7 @@ test('EnvironmentService returns the selected environment', async () => {
 	const marsConfig = toJsonText({
 		namespace: 'gl',
 		envs_path: 'infra/envs',
+		env_bucket: '{env}-infra-{aws_account_id}',
 		work_path: '.mars',
 	});
 	const stateFile = toJsonText({
@@ -105,6 +113,7 @@ test('EnvironmentService creates a new environment from config namespace', async
 	const marsConfig = toJsonText({
 		namespace: 'app',
 		envs_path: 'infra/envs',
+		env_bucket: '{env}-infra-{aws_account_id}',
 		work_path: '.mars',
 	});
 
@@ -113,8 +122,8 @@ test('EnvironmentService creates a new environment from config namespace', async
 	const environment = await service.create('dev');
 	const environmentFile = vfs.files.get('/repo/infra/envs/dev/environment.yml');
 	const expectedEnvironmentFile = stringify({
-		name: 'dev',
 		namespace: 'app',
+		name: 'dev',
 		aws_account_id: 'TODO',
 		aws_region: 'TODO',
 	});
@@ -128,6 +137,7 @@ test('EnvironmentService does not create an environment that already exists', as
 	const marsConfig = toJsonText({
 		namespace: 'app',
 		envs_path: 'infra/envs',
+		env_bucket: '{env}-infra-{aws_account_id}',
 		work_path: '.mars',
 	});
 	const environmentFile = stringify({
@@ -150,6 +160,7 @@ test('EnvironmentService selects an environment by id', async () => {
 	const marsConfig = toJsonText({
 		namespace: 'gl',
 		envs_path: 'infra/envs',
+		env_bucket: '{env}-infra-{aws_account_id}',
 		work_path: '.mars',
 	});
 	const devEnvironment = stringify({
@@ -177,6 +188,7 @@ test('EnvironmentService returns null when selecting a missing environment', asy
 	const marsConfig = toJsonText({
 		namespace: 'gl',
 		envs_path: 'infra/envs',
+		env_bucket: '{env}-infra-{aws_account_id}',
 		work_path: '.mars',
 	});
 
@@ -185,4 +197,150 @@ test('EnvironmentService returns null when selecting a missing environment', asy
 	const environment = await service.select('gl-dev');
 
 	assert.equal(environment, null);
+});
+
+test('EnvironmentService bootstraps the resolved bucket when it does not exist', async () => {
+	const { s3Client, service, vfs } = sut();
+	const send = vi.spyOn(s3Client, 'send');
+	const marsConfig = toJsonText({
+		namespace: 'gl',
+		envs_path: 'infra/envs',
+		env_bucket: '{env}-infra-{aws_account_id}',
+		work_path: '.mars',
+	});
+	const devEnvironment = stringify({
+		name: 'dev',
+		namespace: 'gl',
+		aws_account_id: '10000',
+		aws_region: 'us-east-1',
+	});
+
+	send.mockImplementation(async (command) => {
+		if (command instanceof HeadBucketCommand) {
+			throw {
+				$metadata: {
+					httpStatusCode: 404,
+				},
+				name: 'NotFound',
+			};
+		}
+
+		return {};
+	});
+	vfs.setTextFile('mars.config.json', marsConfig);
+	vfs.setTextFile('infra/envs/dev/environment.yml', devEnvironment);
+
+	const result = await service.bootstrap('gl-dev');
+	const commandTypes = send.mock.calls.map(([command]) => command.constructor.name);
+
+	assert.deepEqual(commandTypes, [
+		'HeadBucketCommand',
+		'CreateBucketCommand',
+		'PutBucketEncryptionCommand',
+		'PutPublicAccessBlockCommand',
+		'PutBucketPolicyCommand',
+	]);
+	assert.deepEqual(result, {
+		bucket: 'gl-dev-infra-10000',
+		kind: 'created',
+	});
+});
+
+test('EnvironmentService returns already_exists when the bucket exists', async () => {
+	const { s3Client, service, vfs } = sut();
+	const send = vi.spyOn(s3Client, 'send');
+	const marsConfig = toJsonText({
+		namespace: 'gl',
+		envs_path: 'infra/envs',
+		env_bucket: '{env}-infra-{aws_account_id}',
+		work_path: '.mars',
+	});
+	const devEnvironment = stringify({
+		name: 'dev',
+		namespace: 'gl',
+		aws_account_id: '10000',
+		aws_region: 'us-east-1',
+	});
+
+	send.mockImplementation(async () => {
+		return {};
+	});
+	vfs.setTextFile('mars.config.json', marsConfig);
+	vfs.setTextFile('infra/envs/dev/environment.yml', devEnvironment);
+
+	const result = await service.bootstrap('gl-dev');
+	const commandTypes = send.mock.calls.map(([command]) => command.constructor.name);
+
+	assert.deepEqual(commandTypes, ['HeadBucketCommand']);
+	assert.deepEqual(result, {
+		bucket: 'gl-dev-infra-10000',
+		kind: 'already_exists',
+	});
+});
+
+test('EnvironmentService resolves env_bucket template variables', async () => {
+	const { s3Client, service, vfs } = sut();
+	const send = vi.spyOn(s3Client, 'send');
+	const marsConfig = toJsonText({
+		namespace: 'gl',
+		envs_path: 'infra/envs',
+		env_bucket: '{namespace}-{env_name}-{env}-{aws_account_id}-{aws_region}',
+		work_path: '.mars',
+	});
+	const devEnvironment = stringify({
+		name: 'dev',
+		namespace: 'gl',
+		aws_account_id: '10000',
+		aws_region: 'us-east-1',
+	});
+
+	send.mockImplementation(async () => {
+		return {};
+	});
+	vfs.setTextFile('mars.config.json', marsConfig);
+	vfs.setTextFile('infra/envs/dev/environment.yml', devEnvironment);
+
+	const result = await service.bootstrap('gl-dev');
+
+	assert.deepEqual(result, {
+		bucket: 'gl-dev-gl-dev-10000-us-east-1',
+		kind: 'already_exists',
+	});
+});
+
+test('EnvironmentService returns not_selected when bootstrap has no selected environment', async () => {
+	const { service, vfs } = sut();
+	const marsConfig = toJsonText({
+		namespace: 'gl',
+		envs_path: 'infra/envs',
+		env_bucket: '{env}-infra-{aws_account_id}',
+		work_path: '.mars',
+	});
+
+	vfs.setTextFile('mars.config.json', marsConfig);
+
+	const result = await service.bootstrap(null);
+
+	assert.deepEqual(result, {
+		kind: 'not_selected',
+	});
+});
+
+test('EnvironmentService returns not_found when bootstrap env does not exist', async () => {
+	const { service, vfs } = sut();
+	const marsConfig = toJsonText({
+		namespace: 'gl',
+		envs_path: 'infra/envs',
+		env_bucket: '{env}-infra-{aws_account_id}',
+		work_path: '.mars',
+	});
+
+	vfs.setTextFile('mars.config.json', marsConfig);
+
+	const result = await service.bootstrap('gl-dev');
+
+	assert.deepEqual(result, {
+		kind: 'not_found',
+		name: 'gl-dev',
+	});
 });

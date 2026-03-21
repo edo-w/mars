@@ -62,6 +62,10 @@ Use this skill for any TypeScript implementation in this repository.
   classes or schemas for each layer.
 - Use TypeScript `enum` for closed enum sets and pass the enum into `z.enum(...)`
   when defining the schema.
+- For discriminated union result shapes that will grow over time, prefer named
+  `interface` declarations for each result variant and then compose them into a
+  final union `type` alias, instead of writing large inline object members
+  directly inside the union.
 - All JSON data should use `snake_case`.
 - Date and timestamp fields should use the `name_date` pattern.
 

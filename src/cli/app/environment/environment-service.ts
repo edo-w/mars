@@ -1,16 +1,32 @@
 import path from 'node:path';
+import {
+	CreateBucketCommand,
+	HeadBucketCommand,
+	PutBucketEncryptionCommand,
+	PutBucketPolicyCommand,
+	PutPublicAccessBlockCommand,
+	type S3Client,
+} from '@aws-sdk/client-s3';
 import { parse, stringify } from 'yaml';
-import { ENVIRONMENT_FILE, type Environment, EnvironmentConfig } from '#src/cli/app/environment/environment-shapes';
+import {
+	type BootstrapEnvironmentBucketResult,
+	ENVIRONMENT_FILE,
+	type Environment,
+	EnvironmentConfig,
+} from '#src/cli/app/environment/environment-shapes';
 import type { StateService } from '#src/cli/app/state/state-service';
-import { readMarsConfig } from '#src/cli/boot/config';
+import { type MarsConfig, readMarsConfig } from '#src/cli/boot/config';
 import { normalizePath } from '#src/lib/fs';
+import { isMissingBucketError } from '#src/lib/s3';
 import type { Vfs } from '#src/lib/vfs';
 
 export class EnvironmentService {
+	s3Client: S3Client;
 	stateService: StateService;
 	vfs: Vfs;
 
-	constructor(vfs: Vfs, stateService: StateService) {
+	constructor(vfs: Vfs, stateService: StateService, s3Client: S3Client) {
+		this.s3Client = s3Client;
 		this.vfs = vfs;
 		this.stateService = stateService;
 	}
@@ -31,8 +47,8 @@ export class EnvironmentService {
 			aws_region: 'TODO',
 		});
 		const environmentContents = stringify({
-			name: environmentConfig.name,
 			namespace: environmentConfig.namespace,
+			name: environmentConfig.name,
 			aws_account_id: environmentConfig.aws_account_id,
 			aws_region: environmentConfig.aws_region,
 		});
@@ -53,6 +69,43 @@ export class EnvironmentService {
 		const environments = await this.list();
 
 		return environments.find((environment) => environment.id === name) ?? null;
+	}
+
+	async bootstrap(name: string | null): Promise<BootstrapEnvironmentBucketResult> {
+		const environment = await this.resolveForBootstrap(name);
+
+		if (environment === null) {
+			if (name === null) {
+				return {
+					kind: 'not_selected',
+				};
+			}
+
+			return {
+				kind: 'not_found',
+				name,
+			};
+		}
+
+		const config = await readMarsConfig(this.vfs);
+		const bucket = this.renderBootstrapBucketName(environment, config);
+
+		if (await this.bucketExists(bucket)) {
+			return {
+				bucket,
+				kind: 'already_exists',
+			};
+		}
+
+		await this.createBucket(bucket);
+		await this.enableBucketEncryption(bucket);
+		await this.enableBucketPublicAccessBlock(bucket);
+		await this.enableBucketTlsEnforcement(bucket);
+
+		return {
+			bucket,
+			kind: 'created',
+		};
 	}
 
 	async getCurrent(): Promise<Environment | null> {
@@ -124,5 +177,104 @@ export class EnvironmentService {
 			id: config.id,
 			selected: normalizedConfigPath === selectedEnvironmentPath,
 		};
+	}
+
+	private async createBucket(bucket: string): Promise<void> {
+		await this.s3Client.send(
+			new CreateBucketCommand({
+				Bucket: bucket,
+			}),
+		);
+	}
+
+	private async enableBucketEncryption(bucket: string): Promise<void> {
+		await this.s3Client.send(
+			new PutBucketEncryptionCommand({
+				Bucket: bucket,
+				ServerSideEncryptionConfiguration: {
+					Rules: [
+						{
+							ApplyServerSideEncryptionByDefault: {
+								SSEAlgorithm: 'AES256',
+							},
+						},
+					],
+				},
+			}),
+		);
+	}
+
+	private async enableBucketPublicAccessBlock(bucket: string): Promise<void> {
+		await this.s3Client.send(
+			new PutPublicAccessBlockCommand({
+				Bucket: bucket,
+				PublicAccessBlockConfiguration: {
+					BlockPublicAcls: true,
+					BlockPublicPolicy: true,
+					IgnorePublicAcls: true,
+					RestrictPublicBuckets: true,
+				},
+			}),
+		);
+	}
+
+	private async enableBucketTlsEnforcement(bucket: string): Promise<void> {
+		await this.s3Client.send(
+			new PutBucketPolicyCommand({
+				Bucket: bucket,
+				Policy: JSON.stringify({
+					Statement: [
+						{
+							Action: 's3:*',
+							Condition: {
+								Bool: {
+									'aws:SecureTransport': 'false',
+								},
+							},
+							Effect: 'Deny',
+							Principal: '*',
+							Resource: [`arn:aws:s3:::${bucket}`, `arn:aws:s3:::${bucket}/*`],
+							Sid: 'DenyInsecureTransport',
+						},
+					],
+					Version: '2012-10-17',
+				}),
+			}),
+		);
+	}
+
+	private async bucketExists(bucket: string): Promise<boolean> {
+		try {
+			await this.s3Client.send(
+				new HeadBucketCommand({
+					Bucket: bucket,
+				}),
+			);
+
+			return true;
+		} catch (error) {
+			if (!isMissingBucketError(error)) {
+				throw error;
+			}
+
+			return false;
+		}
+	}
+
+	private renderBootstrapBucketName(environment: Environment, config: MarsConfig): string {
+		return config.env_bucket
+			.replaceAll('{namespace}', config.namespace)
+			.replaceAll('{env_name}', environment.config.name)
+			.replaceAll('{env}', environment.id)
+			.replaceAll('{aws_account_id}', environment.config.aws_account_id)
+			.replaceAll('{aws_region}', environment.config.aws_region);
+	}
+
+	private async resolveForBootstrap(name: string | null): Promise<Environment | null> {
+		if (name !== null) {
+			return this.get(name);
+		}
+
+		return this.getCurrent();
 	}
 }
