@@ -119,6 +119,11 @@ class ExampleRecord {
   before returning.
 - Break complex callsites into intermediate variables when that improves
   readability.
+- When a callsite needs non-trivial object construction before invoking another
+  function, extract that constructed object into a named local variable instead
+  of inlining it directly in the function call.
+- Apply the same pattern to other values built alongside that call, such as
+  scoped containers, so command actions remain easy to scan top to bottom.
 - Do not introduce tiny generic helpers unless they remove real repetition
   without increasing abstraction cost.
 - Use `Promise.allSettled(...)` by default when coordinating multiple async

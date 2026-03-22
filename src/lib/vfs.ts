@@ -40,6 +40,16 @@ export class Vfs {
 		}
 	}
 
+	async removeFile(targetPath: string): Promise<void> {
+		try {
+			await fsp.rm(this.resolve(targetPath));
+		} catch (error) {
+			if (!isMissingPathError(error)) {
+				throw error;
+			}
+		}
+	}
+
 	async listDirectory(targetPath: string): Promise<string[]> {
 		try {
 			return await fsp.readdir(this.resolve(targetPath));

@@ -69,6 +69,10 @@ export class MockVfs implements VfsLike {
 		return [...entryNames].sort((left, right) => left.localeCompare(right));
 	}
 
+	async removeFile(targetPath: string): Promise<void> {
+		this.files.delete(this.resolve(targetPath));
+	}
+
 	async readTextFile(targetPath: string): Promise<string> {
 		const contents = this.files.get(this.resolve(targetPath));
 
