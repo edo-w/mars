@@ -56,10 +56,13 @@ test('SshCaService lists ssh ca names from s3', async () => {
 			return {
 				Contents: [
 					{
-						Key: 'mars/ssh/ca/deploy_ca_ed25519.pub',
+						Key: 'mars/env/gl-dev/ssh/ca/deploy_ca_ed25519.pub',
 					},
 					{
-						Key: 'mars/ssh/ca/default_ca_ed25519.key',
+						Key: 'mars/env/gl-dev/ssh/ca/default_ca_ed25519.key',
+					},
+					{
+						Key: 'mars/env/gl-test/ssh/ca/test_ca_ed25519.pub',
 					},
 				],
 				IsTruncated: false,
@@ -110,8 +113,8 @@ test('SshCaService shows ssh ca details from s3', async () => {
 	const sshCa = environment === null ? null : await service.show(environment, 'default');
 
 	assert.equal(sshCa?.name, 'default');
-	assert.equal(sshCa?.public_key, 's3://gl-dev-infra-10000/mars/ssh/ca/default_ca_ed25519.pub');
-	assert.equal(sshCa?.private_key, 's3://gl-dev-infra-10000/mars/ssh/ca/default_ca_ed25519.key');
+	assert.equal(sshCa?.public_key, 's3://gl-dev-infra-10000/mars/env/gl-dev/ssh/ca/default_ca_ed25519.pub');
+	assert.equal(sshCa?.private_key, 's3://gl-dev-infra-10000/mars/env/gl-dev/ssh/ca/default_ca_ed25519.key');
 	assert.equal(sshCa?.create_date.toISOString(), createDate.toISOString());
 });
 
@@ -133,7 +136,7 @@ test('SshCaService treats an existing local keypair as already existing', async 
 
 	vfs.setTextFile('mars.config.json', marsConfig);
 	vfs.setTextFile('infra/envs/dev/environment.yml', environmentFile);
-	vfs.setTextFile('.mars/ssh/ca/default_ca_ed25519.key', 'LOCAL PRIVATE KEY');
+	vfs.setTextFile('.mars/env/gl-dev/ssh/ca/default_ca_ed25519.key', 'LOCAL PRIVATE KEY');
 
 	const environment = await environmentService.get('gl-dev');
 	const result = environment === null ? null : await service.create(environment, 'default', 'secret');
@@ -167,7 +170,7 @@ test('SshCaService creates an ssh ca and uploads both files to s3', async () => 
 	sshKeygen.publicKeyContents = 'GENERATED PUBLIC KEY';
 	send.mockImplementation(async (command) => {
 		if (command instanceof HeadObjectCommand) {
-			if (command.input.Key === 'mars/ssh/ca/default_ca_ed25519.key') {
+			if (command.input.Key === 'mars/env/gl-dev/ssh/ca/default_ca_ed25519.key') {
 				return command.input.Bucket === 'gl-dev-infra-10000' &&
 					send.mock.calls.filter(([call]) => call instanceof PutObjectCommand).length > 0
 					? {
@@ -181,7 +184,7 @@ test('SshCaService creates an ssh ca and uploads both files to s3', async () => 
 						});
 			}
 
-			if (command.input.Key === 'mars/ssh/ca/default_ca_ed25519.pub') {
+			if (command.input.Key === 'mars/env/gl-dev/ssh/ca/default_ca_ed25519.pub') {
 				return send.mock.calls.filter(([call]) => call instanceof PutObjectCommand).length > 0
 					? {
 							LastModified: createDate,
@@ -202,8 +205,8 @@ test('SshCaService creates an ssh ca and uploads both files to s3', async () => 
 
 	const environment = await environmentService.get('gl-dev');
 	const result = environment === null ? null : await service.create(environment, 'default', 'secret');
-	const privateKey = vfs.files.get('/repo/.mars/ssh/ca/default_ca_ed25519.key');
-	const publicKey = vfs.files.get('/repo/.mars/ssh/ca/default_ca_ed25519.pub');
+	const privateKey = vfs.files.get('/repo/.mars/env/gl-dev/ssh/ca/default_ca_ed25519.key');
+	const publicKey = vfs.files.get('/repo/.mars/env/gl-dev/ssh/ca/default_ca_ed25519.pub');
 	const putCommands = send.mock.calls.filter(([command]) => command instanceof PutObjectCommand);
 
 	assert.equal(result?.kind, 'created');
@@ -231,7 +234,7 @@ test('SshCaService returns corrupted when pull is missing s3 files', async () =>
 
 	send.mockImplementation(async (command) => {
 		if (command instanceof HeadObjectCommand) {
-			if (command.input.Key === 'mars/ssh/ca/default_ca_ed25519.pub') {
+			if (command.input.Key === 'mars/env/gl-dev/ssh/ca/default_ca_ed25519.pub') {
 				return {
 					LastModified: new Date('2026-03-22T12:00:00.000Z'),
 				};
@@ -255,7 +258,7 @@ test('SshCaService returns corrupted when pull is missing s3 files', async () =>
 
 	assert.deepEqual(result, {
 		kind: 'corrupted',
-		missing_files: ['mars/ssh/ca/default_ca_ed25519.key'],
+		missing_files: ['mars/env/gl-dev/ssh/ca/default_ca_ed25519.key'],
 		name: 'default',
 	});
 });
@@ -328,7 +331,10 @@ test('SshCaService pulls an ssh ca into the work path', async () => {
 
 		if (command instanceof GetObjectCommand) {
 			return {
-				Body: command.input.Key === 'mars/ssh/ca/default_ca_ed25519.key' ? privateKeyBody : publicKeyBody,
+				Body:
+					command.input.Key === 'mars/env/gl-dev/ssh/ca/default_ca_ed25519.key'
+						? privateKeyBody
+						: publicKeyBody,
 			};
 		}
 
@@ -339,8 +345,8 @@ test('SshCaService pulls an ssh ca into the work path', async () => {
 
 	const environment = await environmentService.get('gl-dev');
 	const result = environment === null ? null : await service.pull(environment, 'default');
-	const privateKey = vfs.files.get('/repo/.mars/ssh/ca/default_ca_ed25519.key');
-	const publicKey = vfs.files.get('/repo/.mars/ssh/ca/default_ca_ed25519.pub');
+	const privateKey = vfs.files.get('/repo/.mars/env/gl-dev/ssh/ca/default_ca_ed25519.key');
+	const publicKey = vfs.files.get('/repo/.mars/env/gl-dev/ssh/ca/default_ca_ed25519.pub');
 
 	assert.equal(result?.kind, 'pulled');
 	assert.equal(privateKey, 'PULLED PRIVATE KEY');
@@ -370,20 +376,20 @@ test('SshCaService describes destroy resources from s3 and local cache', async (
 	});
 	vfs.setTextFile('mars.config.json', marsConfig);
 	vfs.setTextFile('infra/envs/dev/environment.yml', environmentFile);
-	vfs.setTextFile('.mars/ssh/ca/default_ca_ed25519.key', 'LOCAL PRIVATE KEY');
+	vfs.setTextFile('.mars/env/gl-dev/ssh/ca/default_ca_ed25519.key', 'LOCAL PRIVATE KEY');
 
 	const environment = await environmentService.get('gl-dev');
 	const resources = environment === null ? null : await service.describeDestroy(environment, 'default');
 
 	assert.deepEqual(resources, [
 		{
-			label: 's3 object "mars/ssh/ca/default_ca_ed25519.key"',
+			label: 's3 object "mars/env/gl-dev/ssh/ca/default_ca_ed25519.key"',
 		},
 		{
-			label: 's3 object "mars/ssh/ca/default_ca_ed25519.pub"',
+			label: 's3 object "mars/env/gl-dev/ssh/ca/default_ca_ed25519.pub"',
 		},
 		{
-			label: 'local file ".mars/ssh/ca/default_ca_ed25519.key"',
+			label: 'local file ".mars/env/gl-dev/ssh/ca/default_ca_ed25519.key"',
 		},
 	]);
 });
@@ -451,19 +457,49 @@ test('SshCaService destroys ssh ca files from s3 and local cache', async () => {
 	});
 	vfs.setTextFile('mars.config.json', marsConfig);
 	vfs.setTextFile('infra/envs/dev/environment.yml', environmentFile);
-	vfs.setTextFile('.mars/ssh/ca/default_ca_ed25519.key', 'LOCAL PRIVATE KEY');
-	vfs.setTextFile('.mars/ssh/ca/default_ca_ed25519.pub', 'LOCAL PUBLIC KEY');
+	vfs.setTextFile('.mars/env/gl-dev/ssh/ca/default_ca_ed25519.key', 'LOCAL PRIVATE KEY');
+	vfs.setTextFile('.mars/env/gl-dev/ssh/ca/default_ca_ed25519.pub', 'LOCAL PUBLIC KEY');
 
 	const environment = await environmentService.get('gl-dev');
 	const result = environment === null ? null : await service.destroy(environment, 'default');
 	const deleteCommands = send.mock.calls.filter(([command]) => command instanceof DeleteObjectCommand);
-	const privateKey = vfs.files.get('/repo/.mars/ssh/ca/default_ca_ed25519.key');
-	const publicKey = vfs.files.get('/repo/.mars/ssh/ca/default_ca_ed25519.pub');
+	const privateKey = vfs.files.get('/repo/.mars/env/gl-dev/ssh/ca/default_ca_ed25519.key');
+	const publicKey = vfs.files.get('/repo/.mars/env/gl-dev/ssh/ca/default_ca_ed25519.pub');
 
 	assert.equal(result?.kind, 'destroyed');
 	assert.equal(deleteCommands.length, 2);
 	assert.equal(privateKey, undefined);
 	assert.equal(publicKey, undefined);
+});
+
+test('SshCaService remove only deletes local files for the resolved environment', async () => {
+	const { environmentService, service, vfs } = sut();
+	const marsConfig = toJsonText({
+		namespace: 'gl',
+		envs_path: 'infra/envs',
+		env_bucket: '{env}-infra-{aws_account_id}',
+		work_path: '.mars',
+	});
+	const environmentFile = stringify({
+		name: 'dev',
+		namespace: 'gl',
+		aws_account_id: '10000',
+		aws_region: 'us-east-1',
+	});
+
+	vfs.setTextFile('mars.config.json', marsConfig);
+	vfs.setTextFile('infra/envs/dev/environment.yml', environmentFile);
+	vfs.setTextFile('.mars/env/gl-dev/ssh/ca/default_ca_ed25519.key', 'DEV PRIVATE KEY');
+	vfs.setTextFile('.mars/env/gl-test/ssh/ca/default_ca_ed25519.key', 'TEST PRIVATE KEY');
+
+	const environment = await environmentService.get('gl-dev');
+	const removed = environment === null ? false : await service.rm(environment, 'default');
+	const devPrivateKey = vfs.files.get('/repo/.mars/env/gl-dev/ssh/ca/default_ca_ed25519.key');
+	const testPrivateKey = vfs.files.get('/repo/.mars/env/gl-test/ssh/ca/default_ca_ed25519.key');
+
+	assert.equal(removed, true);
+	assert.equal(devPrivateKey, undefined);
+	assert.equal(testPrivateKey, 'TEST PRIVATE KEY');
 });
 
 function createObjectBody(contents: string) {

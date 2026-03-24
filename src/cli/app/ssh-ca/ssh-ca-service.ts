@@ -17,13 +17,13 @@ import type {
 	SshCaResource,
 } from '#src/cli/app/ssh-ca/ssh-ca-shapes';
 import {
+	createSshCaDirectoryS3Path,
 	createSshCaPrivateKeyLocalPath,
 	createSshCaPrivateKeyS3Path,
 	createSshCaPublicKeyLocalPath,
 	createSshCaPublicKeyS3Path,
 	SSH_CA_PRIVATE_KEY_SUFFIX,
 	SSH_CA_PUBLIC_KEY_SUFFIX,
-	SSH_CA_S3_DIRECTORY,
 } from '#src/cli/app/ssh-ca/ssh-ca-shapes';
 import { readMarsConfig } from '#src/cli/boot/config';
 import { isMissingObjectError } from '#src/lib/s3';
@@ -45,7 +45,7 @@ export class SshCaService {
 
 	async list(environment: Environment): Promise<string[]> {
 		const bucket = await this.environmentService.getBucketName(environment);
-		const objectKeys = await this.listObjectKeys(bucket, SSH_CA_S3_DIRECTORY);
+		const objectKeys = await this.listObjectKeys(bucket, createSshCaDirectoryS3Path(environment.id));
 		const names = new Set<string>();
 
 		for (const objectKey of objectKeys) {
@@ -61,8 +61,8 @@ export class SshCaService {
 
 	async show(environment: Environment, name: string): Promise<SshCa | null> {
 		const bucket = await this.environmentService.getBucketName(environment);
-		const privateKeyPath = createSshCaPrivateKeyS3Path(name);
-		const publicKeyPath = createSshCaPublicKeyS3Path(name);
+		const privateKeyPath = createSshCaPrivateKeyS3Path(environment.id, name);
+		const publicKeyPath = createSshCaPublicKeyS3Path(environment.id, name);
 		const privateKeyHead = await this.readObjectHead(bucket, privateKeyPath);
 		const publicKeyHead = await this.readObjectHead(bucket, publicKeyPath);
 
@@ -79,7 +79,7 @@ export class SshCaService {
 	}
 
 	async create(environment: Environment, name: string, passphrase: string): Promise<CreateSshCaResult> {
-		const localPaths = await this.getLocalPaths(name);
+		const localPaths = await this.getLocalPaths(environment.id, name);
 
 		if (
 			(await this.vfs.fileExists(localPaths.privateKeyPath)) ||
@@ -92,7 +92,7 @@ export class SshCaService {
 		}
 
 		const bucket = await this.environmentService.getBucketName(environment);
-		const s3Paths = this.getS3Paths(name);
+		const s3Paths = this.getS3Paths(environment.id, name);
 
 		if (
 			(await this.objectExists(bucket, s3Paths.privateKeyPath)) ||
@@ -146,7 +146,7 @@ export class SshCaService {
 
 	async pull(environment: Environment, name: string): Promise<PullSshCaResult> {
 		const bucket = await this.environmentService.getBucketName(environment);
-		const s3Paths = this.getS3Paths(name);
+		const s3Paths = this.getS3Paths(environment.id, name);
 		const privateKeyHead = await this.readObjectHead(bucket, s3Paths.privateKeyPath);
 		const publicKeyHead = await this.readObjectHead(bucket, s3Paths.publicKeyPath);
 		const missingFiles: string[] = [];
@@ -174,7 +174,7 @@ export class SshCaService {
 			};
 		}
 
-		const localPaths = await this.getLocalPaths(name);
+		const localPaths = await this.getLocalPaths(environment.id, name);
 		const localDirectoryPath = path.posix.dirname(localPaths.privateKeyPath);
 		const createDate = privateKeyHead?.LastModified ?? new Date(0);
 		const privateKeyContents = await this.getObjectText(bucket, s3Paths.privateKeyPath);
@@ -195,8 +195,8 @@ export class SshCaService {
 		};
 	}
 
-	async rm(name: string): Promise<boolean> {
-		const localPaths = await this.getLocalPaths(name);
+	async rm(environment: Environment, name: string): Promise<boolean> {
+		const localPaths = await this.getLocalPaths(environment.id, name);
 		const privateKeyExists = await this.vfs.fileExists(localPaths.privateKeyPath);
 		const publicKeyExists = await this.vfs.fileExists(localPaths.publicKeyPath);
 
@@ -212,8 +212,8 @@ export class SshCaService {
 
 	async describeDestroy(environment: Environment, name: string): Promise<SshCaResource[] | null> {
 		const bucket = await this.environmentService.getBucketName(environment);
-		const s3Paths = this.getS3Paths(name);
-		const localPaths = await this.getLocalPaths(name);
+		const s3Paths = this.getS3Paths(environment.id, name);
+		const localPaths = await this.getLocalPaths(environment.id, name);
 		const resources: SshCaResource[] = [];
 
 		if (await this.objectExists(bucket, s3Paths.privateKeyPath)) {
@@ -245,8 +245,8 @@ export class SshCaService {
 
 	async destroy(environment: Environment, name: string): Promise<DestroySshCaResult> {
 		const bucket = await this.environmentService.getBucketName(environment);
-		const s3Paths = this.getS3Paths(name);
-		const localPaths = await this.getLocalPaths(name);
+		const s3Paths = this.getS3Paths(environment.id, name);
+		const localPaths = await this.getLocalPaths(environment.id, name);
 		const resources = await this.describeDestroy(environment, name);
 
 		if (resources === null) {
@@ -302,19 +302,19 @@ export class SshCaService {
 		return result.Body.transformToString();
 	}
 
-	private getS3Paths(name: string): { privateKeyPath: string; publicKeyPath: string } {
+	private getS3Paths(env: string, name: string): { privateKeyPath: string; publicKeyPath: string } {
 		return {
-			privateKeyPath: createSshCaPrivateKeyS3Path(name),
-			publicKeyPath: createSshCaPublicKeyS3Path(name),
+			privateKeyPath: createSshCaPrivateKeyS3Path(env, name),
+			publicKeyPath: createSshCaPublicKeyS3Path(env, name),
 		};
 	}
 
-	private async getLocalPaths(name: string): Promise<{ privateKeyPath: string; publicKeyPath: string }> {
+	private async getLocalPaths(env: string, name: string): Promise<{ privateKeyPath: string; publicKeyPath: string }> {
 		const config = await readMarsConfig(this.vfs);
 
 		return {
-			privateKeyPath: createSshCaPrivateKeyLocalPath(config.work_path, name),
-			publicKeyPath: createSshCaPublicKeyLocalPath(config.work_path, name),
+			privateKeyPath: createSshCaPrivateKeyLocalPath(config.work_path, env, name),
+			publicKeyPath: createSshCaPublicKeyLocalPath(config.work_path, env, name),
 		};
 	}
 
@@ -333,18 +333,19 @@ export class SshCaService {
 	private async listObjectKeys(bucket: string, prefix: string): Promise<string[]> {
 		const objectKeys: string[] = [];
 		let continuationToken: string | undefined;
+		const normalizedPrefix = `${prefix}/`;
 
 		do {
 			const result = await this.s3Client.send(
 				new ListObjectsV2Command({
 					Bucket: bucket,
 					ContinuationToken: continuationToken,
-					Prefix: `${prefix}/`,
+					Prefix: normalizedPrefix,
 				}),
 			);
 			const pageObjectKeys =
 				result.Contents?.flatMap((object) => {
-					return object.Key === undefined ? [] : [object.Key];
+					return object.Key?.startsWith(normalizedPrefix) ? [object.Key] : [];
 				}) ?? [];
 
 			objectKeys.push(...pageObjectKeys);

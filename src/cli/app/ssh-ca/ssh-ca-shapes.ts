@@ -2,7 +2,8 @@ import path from 'node:path';
 
 export const DEFAULT_SSH_CA_NAME = 'default';
 export const SSH_CA_DIRECTORY = 'ssh/ca';
-export const SSH_CA_S3_DIRECTORY = 'mars/ssh/ca';
+export const ENV_DIRECTORY = 'env';
+export const MARS_DIRECTORY = 'mars';
 export const SSH_CA_PRIVATE_KEY_SUFFIX = '_ca_ed25519.key';
 export const SSH_CA_PUBLIC_KEY_SUFFIX = '_ca_ed25519.pub';
 
@@ -67,18 +68,22 @@ export function createSshCaPublicKeyFileName(name: string): string {
 	return `${name}${SSH_CA_PUBLIC_KEY_SUFFIX}`;
 }
 
-export function createSshCaPrivateKeyLocalPath(workPath: string, name: string): string {
-	return path.posix.join(workPath, SSH_CA_DIRECTORY, createSshCaPrivateKeyFileName(name));
+export function createSshCaPrivateKeyLocalPath(workPath: string, env: string, name: string): string {
+	return path.posix.join(workPath, ENV_DIRECTORY, env, SSH_CA_DIRECTORY, createSshCaPrivateKeyFileName(name));
 }
 
-export function createSshCaPublicKeyLocalPath(workPath: string, name: string): string {
-	return path.posix.join(workPath, SSH_CA_DIRECTORY, createSshCaPublicKeyFileName(name));
+export function createSshCaPublicKeyLocalPath(workPath: string, env: string, name: string): string {
+	return path.posix.join(workPath, ENV_DIRECTORY, env, SSH_CA_DIRECTORY, createSshCaPublicKeyFileName(name));
 }
 
-export function createSshCaPrivateKeyS3Path(name: string): string {
-	return path.posix.join(SSH_CA_S3_DIRECTORY, createSshCaPrivateKeyFileName(name));
+export function createSshCaDirectoryS3Path(env: string): string {
+	return path.posix.join(MARS_DIRECTORY, ENV_DIRECTORY, env, SSH_CA_DIRECTORY);
 }
 
-export function createSshCaPublicKeyS3Path(name: string): string {
-	return path.posix.join(SSH_CA_S3_DIRECTORY, createSshCaPublicKeyFileName(name));
+export function createSshCaPrivateKeyS3Path(env: string, name: string): string {
+	return path.posix.join(createSshCaDirectoryS3Path(env), createSshCaPrivateKeyFileName(name));
+}
+
+export function createSshCaPublicKeyS3Path(env: string, name: string): string {
+	return path.posix.join(createSshCaDirectoryS3Path(env), createSshCaPublicKeyFileName(name));
 }
