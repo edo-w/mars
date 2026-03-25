@@ -1,6 +1,11 @@
 {
-	"namespace": "app",
-	"envs_path": "infra/envs",
-	"env_bucket": "{env}-infra-{aws_account_id}",
-	"work_path": ".mars"
+  "namespace": "app",
+  "envs_path": "infra/envs",
+  "work_path": ".mars",
+  "backend": {
+    "local": {}
+  },
+  "secrets": {
+    "password": {}
+  }
 }
