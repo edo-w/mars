@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { InitService } from '#src/cli/app/init/init-service';
 import { toJsonText } from '#test/helpers/json';
+import { toMarsConfigText } from '#test/helpers/mars-config';
 import { MockVfs } from '#test/mocks/mock-vfs';
 
 function sut() {
@@ -23,8 +24,13 @@ test('InitService creates the default config and work directory through the vfs'
 	const expectedConfig = toJsonText({
 		namespace: 'app',
 		envs_path: 'infra/envs',
-		env_bucket: '{env}-infra-{aws_account_id}',
 		work_path: '.mars',
+		backend: {
+			local: {},
+		},
+		secrets: {
+			password: {},
+		},
 	});
 	const hasMarsDir = vfs.directories.has('/repo/.mars');
 
@@ -34,10 +40,7 @@ test('InitService creates the default config and work directory through the vfs'
 
 test('InitService skips existing config and work directory', async () => {
 	const { service, vfs } = sut();
-	const marsConfig = toJsonText({
-		namespace: 'gl',
-		envs_path: 'infra/custom-envs',
-		env_bucket: '{env}-infra-{aws_account_id}',
+	const marsConfig = toMarsConfigText({
 		work_path: '.mars-local',
 	});
 
@@ -53,10 +56,7 @@ test('InitService skips existing config and work directory', async () => {
 
 test('InitService uses the configured work_path from an existing config', async () => {
 	const { service, vfs } = sut();
-	const marsConfig = toJsonText({
-		namespace: 'gl',
-		envs_path: 'infra/envs',
-		env_bucket: '{env}-infra-{aws_account_id}',
+	const marsConfig = toMarsConfigText({
 		work_path: '.mars-local',
 	});
 
@@ -74,7 +74,12 @@ test('InitService defaults work_path when an existing config omits it', async ()
 	const marsConfig = toJsonText({
 		namespace: 'gl',
 		envs_path: 'infra/envs',
-		env_bucket: '{env}-infra-{aws_account_id}',
+		backend: {
+			local: {},
+		},
+		secrets: {
+			password: {},
+		},
 	});
 
 	vfs.setTextFile('mars.config.json', marsConfig);

@@ -1,5 +1,8 @@
 export function isMissingBucketError(error: unknown): boolean {
-	if (typeof error !== 'object' || error === null || !('name' in error)) {
+	const isObject = typeof error === 'object' && error !== null;
+	const hasName = isObject && 'name' in error;
+
+	if (!hasName) {
 		return false;
 	}
 
@@ -16,7 +19,10 @@ export function isMissingBucketError(error: unknown): boolean {
 }
 
 export function isMissingObjectError(error: unknown): boolean {
-	if (typeof error !== 'object' || error === null || !('name' in error)) {
+	const isObject = typeof error === 'object' && error !== null;
+	const hasName = isObject && 'name' in error;
+
+	if (!hasName) {
 		return false;
 	}
 

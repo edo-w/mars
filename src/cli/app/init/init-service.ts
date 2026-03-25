@@ -1,5 +1,5 @@
 import { getLogger } from '@logtape/logtape';
-import { CONFIG_FILE, createDefaultMarsConfig, MarsConfig } from '#src/cli/boot/config';
+import { CONFIG_FILE, createDefaultMarsConfig, MarsConfig } from '#src/cli/app/config/config-shapes';
 import type { Vfs } from '#src/lib/vfs';
 
 export class InitService {

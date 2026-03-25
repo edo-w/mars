@@ -129,6 +129,26 @@ class ExampleRecord {
 - Use `Promise.allSettled(...)` by default when coordinating multiple async
   operations that should all be awaited.
 
+## Complexity Demon
+
+- Complexity is a demon. Keep actively driving it out of the codebase instead
+  of accepting dense logic just because it is shorter.
+- When a condition or transformation is more than a couple of checks deep,
+  extract intermediate local variables with names that describe intent.
+- Prefer code that makes the business meaning obvious over code that minimizes
+  line count.
+- Avoid stacking several boolean operators into one `if (...)` when named
+  locals would make the reasoning clearer.
+- Avoid dense inline `flatMap(...)`, ternary, and guard expressions when they
+  hide what is being computed.
+- When reading a line requires mentally simulating several branches at once,
+  stop and split the logic into smaller named steps.
+- Prefer patterns like `const hasKey`, `const isInPath`, `const shouldInclude`
+  over compressed checks such as `a === undefined || a === x || !a.startsWith(x)`.
+- The same rule applies to related transformations: extract names like
+  `entryNameIsEmpty`, `directoryHasTrailingSlash`, or `contactIsInactive`
+  instead of burying the intent inside one expression.
+
 ## Validation
 
 In this repository:

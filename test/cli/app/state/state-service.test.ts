@@ -1,12 +1,15 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
+import { ConfigService } from '#src/cli/app/config/config-service';
 import { StateService } from '#src/cli/app/state/state-service';
 import { toJsonText } from '#test/helpers/json';
+import { toMarsConfigText } from '#test/helpers/mars-config';
 import { MockVfs } from '#test/mocks/mock-vfs';
 
 function sut() {
 	const vfs = new MockVfs();
-	const service = new StateService(vfs);
+	const configService = new ConfigService(vfs);
+	const service = new StateService(vfs, configService);
 
 	return {
 		service,
@@ -16,10 +19,10 @@ function sut() {
 
 test('StateService returns null when state is missing', async () => {
 	const { service, vfs } = sut();
-	const marsConfig = toJsonText({
-		namespace: 'gl',
-		envs_path: 'infra/envs',
-		work_path: '.mars',
+	const marsConfig = toMarsConfigText({
+		backend: {
+			local: {},
+		},
 	});
 
 	vfs.setTextFile('mars.config.json', marsConfig);
@@ -31,10 +34,10 @@ test('StateService returns null when state is missing', async () => {
 
 test('StateService writes the selected environment into state.json', async () => {
 	const { service, vfs } = sut();
-	const marsConfig = toJsonText({
-		namespace: 'gl',
-		envs_path: 'infra/envs',
-		work_path: '.mars',
+	const marsConfig = toMarsConfigText({
+		backend: {
+			local: {},
+		},
 	});
 
 	vfs.setTextFile('mars.config.json', marsConfig);
@@ -51,10 +54,10 @@ test('StateService writes the selected environment into state.json', async () =>
 
 test('StateService reads the selected environment from state.json', async () => {
 	const { service, vfs } = sut();
-	const marsConfig = toJsonText({
-		namespace: 'gl',
-		envs_path: 'infra/envs',
-		work_path: '.mars',
+	const marsConfig = toMarsConfigText({
+		backend: {
+			local: {},
+		},
 	});
 	const stateFile = toJsonText({
 		selected_environment: 'infra/envs/dev/environment.yml',

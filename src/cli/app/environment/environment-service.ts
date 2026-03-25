@@ -1,43 +1,24 @@
 import path from 'node:path';
-import {
-	CreateBucketCommand,
-	DeleteBucketCommand,
-	DeleteObjectsCommand,
-	HeadBucketCommand,
-	ListObjectsV2Command,
-	PutBucketEncryptionCommand,
-	PutBucketPolicyCommand,
-	PutPublicAccessBlockCommand,
-	type S3Client,
-} from '@aws-sdk/client-s3';
 import { parse, stringify } from 'yaml';
-import {
-	type BootstrapEnvironmentBucketResult,
-	type DestroyEnvironmentResult,
-	ENVIRONMENT_FILE,
-	type Environment,
-	EnvironmentConfig,
-	type EnvironmentResource,
-} from '#src/cli/app/environment/environment-shapes';
+import type { ConfigService } from '#src/cli/app/config/config-service';
+import { ENVIRONMENT_FILE, type Environment, EnvironmentConfig } from '#src/cli/app/environment/environment-shapes';
 import type { StateService } from '#src/cli/app/state/state-service';
-import { type MarsConfig, readMarsConfig } from '#src/cli/boot/config';
 import { normalizePath } from '#src/lib/fs';
-import { isMissingBucketError } from '#src/lib/s3';
 import type { Vfs } from '#src/lib/vfs';
 
 export class EnvironmentService {
-	s3Client: S3Client;
+	configService: ConfigService;
 	stateService: StateService;
 	vfs: Vfs;
 
-	constructor(vfs: Vfs, stateService: StateService, s3Client: S3Client) {
-		this.s3Client = s3Client;
-		this.vfs = vfs;
+	constructor(vfs: Vfs, configService: ConfigService, stateService: StateService) {
+		this.configService = configService;
 		this.stateService = stateService;
+		this.vfs = vfs;
 	}
 
 	async create(name: string): Promise<Environment | null> {
-		const config = await readMarsConfig(this.vfs);
+		const config = await this.configService.get();
 		const directoryPath = path.posix.join(normalizePath(config.envs_path), normalizePath(name));
 		const configPath = path.posix.join(directoryPath, ENVIRONMENT_FILE);
 
@@ -46,8 +27,8 @@ export class EnvironmentService {
 		}
 
 		const environmentConfig = new EnvironmentConfig({
-			name,
 			namespace: config.namespace,
+			name,
 			aws_account_id: 'TODO',
 			aws_region: 'TODO',
 		});
@@ -76,106 +57,6 @@ export class EnvironmentService {
 		return environments.find((environment) => environment.id === name) ?? null;
 	}
 
-	async describeDestroy(environment: Environment): Promise<EnvironmentResource[]> {
-		const bucket = await this.getBucketName(environment);
-
-		return this.getDestroyResources(bucket);
-	}
-
-	async bootstrap(name: string | null): Promise<BootstrapEnvironmentBucketResult> {
-		const environment = await this.resolveEnvironment(name);
-
-		if (environment === null) {
-			if (name === null) {
-				return {
-					kind: 'not_selected',
-				};
-			}
-
-			return {
-				kind: 'not_found',
-				name,
-			};
-		}
-
-		const config = await readMarsConfig(this.vfs);
-		const bucket = this.renderEnvironmentBucketName(environment, config);
-
-		if (await this.bucketExists(bucket)) {
-			return {
-				bucket,
-				kind: 'already_exists',
-			};
-		}
-
-		await this.createBucket(bucket);
-		await this.enableBucketEncryption(bucket);
-		await this.enableBucketPublicAccessBlock(bucket);
-		await this.enableBucketTlsEnforcement(bucket);
-
-		return {
-			bucket,
-			kind: 'created',
-		};
-	}
-
-	async destroy(name: string | null): Promise<DestroyEnvironmentResult> {
-		const environment = await this.resolveEnvironment(name);
-
-		if (environment === null) {
-			if (name === null) {
-				return {
-					kind: 'not_selected',
-				};
-			}
-
-			return {
-				kind: 'not_found',
-				name,
-			};
-		}
-
-		const bucket = await this.getBucketName(environment);
-		const resources: EnvironmentResource[] = [];
-
-		try {
-			if (!(await this.bucketExists(bucket))) {
-				resources.push({
-					kind: 's3_bucket',
-					label: `s3 bucket "${bucket}"`,
-					status: 'not_found',
-				});
-
-				return {
-					environment,
-					kind: 'success',
-					resources,
-				};
-			}
-
-			await this.emptyBucket(bucket);
-			await this.deleteBucket(bucket);
-			resources.push({
-				kind: 's3_bucket',
-				label: `s3 bucket "${bucket}"`,
-				status: 'destroy',
-			});
-
-			return {
-				environment,
-				kind: 'success',
-				resources,
-			};
-		} catch (error) {
-			return {
-				environment,
-				error,
-				kind: 'fail',
-				resources,
-			};
-		}
-	}
-
 	async getCurrent(): Promise<Environment | null> {
 		const selectedEnvironmentPath = await this.stateService.getSelectedEnvironmentPath();
 
@@ -187,7 +68,7 @@ export class EnvironmentService {
 	}
 
 	async list(): Promise<Environment[]> {
-		const config = await readMarsConfig(this.vfs);
+		const config = await this.configService.get();
 		const selectedEnvironmentPath = await this.stateService.getSelectedEnvironmentPath();
 		const directoryNames = await this.vfs.listDirectory(config.envs_path);
 		const environments: Environment[] = [];
@@ -212,21 +93,6 @@ export class EnvironmentService {
 		return environments.sort((left, right) => left.id.localeCompare(right.id));
 	}
 
-	async select(name: string): Promise<Environment | null> {
-		const environment = await this.get(name);
-
-		if (environment === null) {
-			return null;
-		}
-
-		await this.stateService.setSelectedEnvironmentPath(environment.configPath);
-
-		return {
-			...environment,
-			selected: true,
-		};
-	}
-
 	async readEnvironment(configPath: string, selectedEnvironmentPath: string | null): Promise<Environment | null> {
 		if (!(await this.vfs.fileExists(configPath))) {
 			return null;
@@ -247,12 +113,6 @@ export class EnvironmentService {
 		};
 	}
 
-	async getBucketName(environment: Environment): Promise<string> {
-		const config = await readMarsConfig(this.vfs);
-
-		return this.renderEnvironmentBucketName(environment, config);
-	}
-
 	async resolveEnvironment(name: string | null): Promise<Environment | null> {
 		if (name !== null) {
 			return this.get(name);
@@ -261,148 +121,18 @@ export class EnvironmentService {
 		return this.getCurrent();
 	}
 
-	private async createBucket(bucket: string): Promise<void> {
-		await this.s3Client.send(
-			new CreateBucketCommand({
-				Bucket: bucket,
-			}),
-		);
-	}
+	async select(name: string): Promise<Environment | null> {
+		const environment = await this.get(name);
 
-	private async enableBucketEncryption(bucket: string): Promise<void> {
-		await this.s3Client.send(
-			new PutBucketEncryptionCommand({
-				Bucket: bucket,
-				ServerSideEncryptionConfiguration: {
-					Rules: [
-						{
-							ApplyServerSideEncryptionByDefault: {
-								SSEAlgorithm: 'AES256',
-							},
-						},
-					],
-				},
-			}),
-		);
-	}
-
-	private async enableBucketPublicAccessBlock(bucket: string): Promise<void> {
-		await this.s3Client.send(
-			new PutPublicAccessBlockCommand({
-				Bucket: bucket,
-				PublicAccessBlockConfiguration: {
-					BlockPublicAcls: true,
-					BlockPublicPolicy: true,
-					IgnorePublicAcls: true,
-					RestrictPublicBuckets: true,
-				},
-			}),
-		);
-	}
-
-	private async enableBucketTlsEnforcement(bucket: string): Promise<void> {
-		await this.s3Client.send(
-			new PutBucketPolicyCommand({
-				Bucket: bucket,
-				Policy: JSON.stringify({
-					Statement: [
-						{
-							Action: 's3:*',
-							Condition: {
-								Bool: {
-									'aws:SecureTransport': 'false',
-								},
-							},
-							Effect: 'Deny',
-							Principal: '*',
-							Resource: [`arn:aws:s3:::${bucket}`, `arn:aws:s3:::${bucket}/*`],
-							Sid: 'DenyInsecureTransport',
-						},
-					],
-					Version: '2012-10-17',
-				}),
-			}),
-		);
-	}
-
-	private async bucketExists(bucket: string): Promise<boolean> {
-		try {
-			await this.s3Client.send(
-				new HeadBucketCommand({
-					Bucket: bucket,
-				}),
-			);
-
-			return true;
-		} catch (error) {
-			if (!isMissingBucketError(error)) {
-				throw error;
-			}
-
-			return false;
+		if (environment === null) {
+			return null;
 		}
-	}
 
-	private async deleteBucket(bucket: string): Promise<void> {
-		await this.s3Client.send(
-			new DeleteBucketCommand({
-				Bucket: bucket,
-			}),
-		);
-	}
+		await this.stateService.setSelectedEnvironmentPath(environment.configPath);
 
-	private async emptyBucket(bucket: string): Promise<void> {
-		let continuationToken: string | undefined;
-
-		do {
-			const result = await this.s3Client.send(
-				new ListObjectsV2Command({
-					Bucket: bucket,
-					ContinuationToken: continuationToken,
-				}),
-			);
-			const objectKeys =
-				result.Contents?.flatMap((object) => {
-					return object.Key === undefined
-						? []
-						: [
-								{
-									Key: object.Key,
-								},
-							];
-				}) ?? [];
-
-			if (objectKeys.length > 0) {
-				await this.s3Client.send(
-					new DeleteObjectsCommand({
-						Bucket: bucket,
-						Delete: {
-							Objects: objectKeys,
-						},
-					}),
-				);
-			}
-
-			continuationToken = result.IsTruncated ? result.NextContinuationToken : undefined;
-		} while (continuationToken !== undefined);
-	}
-
-	private getDestroyResources(bucket: string): EnvironmentResource[] {
-		return [
-			{
-				kind: 's3_bucket',
-				label: `s3 bucket "${bucket}"`,
-				status: 'destroy',
-			},
-		];
-	}
-
-	private renderEnvironmentBucketName(environment: Environment, config: MarsConfig): string {
-		return config.env_bucket
-			.replaceAll('{namespace}', config.namespace)
-			.replaceAll('{env_name}', environment.config.name)
-			.replaceAll('{env}', environment.id)
-			.replaceAll('{aws_account_id}', environment.config.aws_account_id)
-			.replaceAll('{aws_region}', environment.config.aws_region);
+		return {
+			...environment,
+			selected: true,
+		};
 	}
 }

@@ -23,9 +23,11 @@
 	"private": true,
 	"type": "module",
 	"dependencies": {
+		"@aws-sdk/client-kms": "^3.1016.0",
 		"@aws-sdk/client-s3": "^3.1014.0",
 		"@edo-w/tiny": "^0.2.0",
 		"@logtape/logtape": "^2.0.4",
+		"argon2": "^0.44.0",
 		"commander": "^14.0.3",
 		"enquirer": "^2.4.1",
 		"yaml": "^2.8.2",

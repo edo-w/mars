@@ -148,22 +148,73 @@ If the bucket already exists:
 
 ### App Services
 
-Responsibilities:
+Environment resolution remains in `EnvironmentService`.
 
-- resolve the environment from explicit `--env` or selected state
-- resolve the final bucket name from the `env_bucket` template
-- check whether the S3 bucket exists
-- create the bucket when missing
-- enforce the required bucket security settings during creation
+Bootstrap resource creation should not live in `EnvironmentService`.
 
-For now, keep this bootstrap behavior inside the existing
-`EnvironmentService`.
+Instead, `mars env bootstrap` should:
+
+1. resolve the target environment from explicit `--env` or selected state
+2. resolve the configured backend bootstrapper
+3. run the backend bootstrapper for the resolved environment
+4. resolve the configured secrets bootstrapper
+5. run the secrets bootstrapper for the resolved environment
+
+This keeps bootstrap behavior aligned with the configured backend and secrets
+provider instead of hardcoding it into environment management.
+
+### Backend Bootstrappers
+
+Use:
+
+- `src/cli/app/backend/backend-bootstrapper.ts`
+- `src/cli/app/backend/backend-bootstrapper-factory.ts`
+
+Implementations:
+
+- `src/cli/app/backend/local-backend-bootstrapper.ts`
+- `src/cli/app/backend/s3-backend-bootstrapper.ts`
+
+Each backend must always have a bootstrapper, even if that bootstrapper is a
+no-op. For example, `local` has no external resources to create, but it should
+still expose a bootstrapper so the command flow stays consistent.
+
+### Secrets Bootstrappers
+
+Use:
+
+- `src/cli/app/secrets/secrets-bootstrapper.ts`
+- `src/cli/app/secrets/secrets-bootstrapper-factory.ts`
+
+Implementations:
+
+- `src/cli/app/secrets/password-secrets-bootstrapper.ts`
+- `src/cli/app/secrets/kms-secrets-bootstrapper.ts`
+
+Each secrets provider must also always have a bootstrapper, even when it has no
+external setup work.
+
+### Factory Pattern
+
+Mars should use factory classes to resolve backend-specific and
+secrets-provider-specific implementations dynamically from `mars.config.json`.
+
+This same pattern is already used for `BackendFactory`, and bootstrapper
+resolution should follow the same approach:
+
+- read config once through `ConfigService`
+- switch on the configured provider
+- construct the matching implementation
+- return the provider-specific service through a shared contract
 
 ### Command Wiring
 
 - add `mars env bootstrap`
-- the command should resolve the bootstrap service from Tiny
+- the command should resolve `EnvironmentService`,
+  `BackendBootstrapperFactory`, and `SecretsBootstrapperFactory` from Tiny
 - environment lookup should reuse the existing environment and state services
+- command handlers should orchestrate the bootstrap flow, while provider
+  bootstrappers own provider-specific setup work
 
 ### AWS Integration
 
@@ -172,7 +223,7 @@ For now, keep this bootstrap behavior inside the existing
 - AWS credentials are expected to already be available in the process
   environment
 - loading or sourcing AWS credentials is outside the scope of this feature
-- S3 access should be isolated inside `EnvironmentService` for now
+- S3 access should be isolated inside `S3BackendBootstrapper`
 - command handlers should not call AWS directly
 
 ## Suggested Implementation Shape
@@ -181,6 +232,11 @@ For now, keep this bootstrap behavior inside the existing
 - update `mars init` to write `env_bucket`
 - add `mars env bootstrap`
 - add environment-resolution flow for explicit `--env` override
+- add backend bootstrapper contract and local or S3 implementations
+- add backend bootstrapper factory
+- add secrets bootstrapper contract and password or KMS implementations
+- add secrets bootstrapper factory
+- move S3 bucket bootstrap logic into `S3BackendBootstrapper`
 - add bucket-name template resolution
 - add S3 bucket existence check
 - add S3 bucket creation with:

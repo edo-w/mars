@@ -2,7 +2,9 @@ import type { Tiny } from '@edo-w/tiny';
 import { getLogger } from '@logtape/logtape';
 import { Command } from 'commander';
 import * as z from 'zod';
+import { BackendFactory } from '#src/cli/app/backend/backend-factory';
 import { EnvironmentService } from '#src/cli/app/environment/environment-service';
+import { SecretsProviderFactory } from '#src/cli/app/secrets/secrets-provider-factory';
 
 export class EnvShowCommandInput {
 	static schema = z.object({
@@ -24,7 +26,12 @@ export function createEnvShowCommand(container: Tiny): Command {
 	command.description('Show environment details.');
 	command.argument('[name]');
 	command.action(async (name) => {
-		await handleEnvShowCommand({ name: name ?? null }, container.createScope());
+		const fields = {
+			name: name ?? null,
+		};
+		const scope = container.createScope();
+
+		await handleEnvShowCommand(fields, scope);
 	});
 
 	return command;
@@ -54,12 +61,29 @@ export async function handleEnvShowCommand(fields: unknown, container: Tiny): Pr
 		return;
 	}
 
-	const envBucket = await service.getBucketName(environment);
+	const backendFactory = container.get(BackendFactory);
+	const backendService = await backendFactory.create();
+	const backendInfo = await backendService.getInfo(environment);
+	const secretsProviderFactory = container.get(SecretsProviderFactory);
+	const secretsProvider = await secretsProviderFactory.create();
+	const secretsInfo = await secretsProvider.getInfo(environment);
 
 	logger.info(`path: ./${environment.directoryPath}`);
 	logger.info(`name: ${environment.config.name}`);
 	logger.info(`namespace: ${environment.config.namespace}`);
 	logger.info(`aws_account_id: ${environment.config.aws_account_id}`);
 	logger.info(`aws_region: ${environment.config.aws_region}`);
-	logger.info(`env_bucket: ${envBucket}`);
+	logger.info('backend:');
+	logger.info(`type: ${backendInfo.type}`);
+
+	for (const field of backendInfo.fields) {
+		logger.info(`${field.name}: ${field.value}`);
+	}
+
+	logger.info('secrets:');
+	logger.info(`type: ${secretsInfo.type}`);
+
+	for (const field of secretsInfo.fields) {
+		logger.info(`${field.name}: ${field.value}`);
+	}
 }

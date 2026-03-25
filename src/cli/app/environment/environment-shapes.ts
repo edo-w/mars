@@ -38,60 +38,7 @@ export interface Environment {
 }
 
 export interface EnvironmentResource {
-	kind: 's3_bucket';
+	kind: 'kms_key' | 's3_bucket';
 	label: string;
 	status: 'destroy' | 'not_found';
 }
-
-export interface BootstrapEnvironmentAlreadyExistsResult {
-	kind: 'already_exists';
-	bucket: string;
-}
-
-export interface BootstrapEnvironmentCreatedResult {
-	kind: 'created';
-	bucket: string;
-}
-
-export interface BootstrapEnvironmentNotFoundResult {
-	kind: 'not_found';
-	name: string;
-}
-
-export interface BootstrapEnvironmentNotSelectedResult {
-	kind: 'not_selected';
-}
-
-export type BootstrapEnvironmentBucketResult =
-	| BootstrapEnvironmentAlreadyExistsResult
-	| BootstrapEnvironmentCreatedResult
-	| BootstrapEnvironmentNotFoundResult
-	| BootstrapEnvironmentNotSelectedResult;
-
-export interface DestroyEnvironmentSuccessResult {
-	kind: 'success';
-	environment: Environment;
-	resources: EnvironmentResource[];
-}
-
-export interface DestroyEnvironmentFailResult {
-	error: unknown;
-	kind: 'fail';
-	environment: Environment;
-	resources: EnvironmentResource[];
-}
-
-export interface DestroyEnvironmentNotFoundResult {
-	kind: 'not_found';
-	name: string;
-}
-
-export interface DestroyEnvironmentNotSelectedResult {
-	kind: 'not_selected';
-}
-
-export type DestroyEnvironmentResult =
-	| DestroyEnvironmentSuccessResult
-	| DestroyEnvironmentFailResult
-	| DestroyEnvironmentNotFoundResult
-	| DestroyEnvironmentNotSelectedResult;

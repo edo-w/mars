@@ -3,7 +3,10 @@ import { getLogger } from '@logtape/logtape';
 import { Command } from 'commander';
 import Enquirer from 'enquirer';
 import * as z from 'zod';
+import { BackendBootstrapperFactory } from '#src/cli/app/backend/backend-bootstrapper-factory';
 import { EnvironmentService } from '#src/cli/app/environment/environment-service';
+import type { EnvironmentResource } from '#src/cli/app/environment/environment-shapes';
+import { SecretsBootstrapperFactory } from '#src/cli/app/secrets/secrets-bootstrapper-factory';
 
 export class EnvDestroyCommandInput {
 	static schema = z.object({
@@ -25,7 +28,12 @@ export function createEnvDestroyCommand(container: Tiny): Command {
 	command.description('Destroy Mars-managed environment resources.');
 	command.option('--env <env>');
 	command.action(async (options) => {
-		await handleEnvDestroyCommand({ env: options.env ?? null }, container.createScope());
+		const fields = {
+			env: options.env ?? null,
+		};
+		const scope = container.createScope();
+
+		await handleEnvDestroyCommand(fields, scope);
 	});
 
 	return command;
@@ -55,7 +63,13 @@ export async function handleEnvDestroyCommand(fields: unknown, container: Tiny):
 		return;
 	}
 
-	const resources = await service.describeDestroy(environment);
+	const backendBootstrapperFactory = container.get(BackendBootstrapperFactory);
+	const backendBootstrapper = await backendBootstrapperFactory.create();
+	const backendResources = await backendBootstrapper.describeDestroy(environment);
+	const secretsBootstrapperFactory = container.get(SecretsBootstrapperFactory);
+	const secretsBootstrapper = await secretsBootstrapperFactory.create();
+	const secretsResources = await secretsBootstrapper.describeDestroy(environment);
+	const resources = [...backendResources, ...secretsResources];
 
 	logger.warning(
 		`you are about to delete the environment "${environment.id}"\n\nthe following resources will be destroyed`,
@@ -76,35 +90,34 @@ export async function handleEnvDestroyCommand(fields: unknown, container: Tiny):
 		logger.info(`remove ${resource.label}`);
 	}
 
-	const result = await service.destroy(input.env);
+	const destroyedResources: EnvironmentResource[] = [];
+	const backendResult = await backendBootstrapper.destroy(environment);
 
-	switch (result.kind) {
-		case 'success': {
-			for (const resource of result.resources) {
-				if (resource.status === 'not_found') {
-					logger.info(`${resource.label} not found`);
-				}
-			}
+	destroyedResources.push(...backendResult.resources);
 
-			logger.info(`environment "${result.environment.id}" destroyed successfully`);
-			return;
-		}
+	if (backendResult.kind === 'fail') {
+		logger.error('failed to destroy environment');
+		logger.error(String(backendResult.error));
+		return;
+	}
 
-		case 'fail': {
-			logger.error('failed to destroy environment');
-			logger.error(String(result.error));
-			return;
-		}
+	const secretsResult = await secretsBootstrapper.destroy(environment);
 
-		case 'not_found': {
-			logger.error(`environment "${result.name}" does not exists`);
-			return;
-		}
+	destroyedResources.push(...secretsResult.resources);
 
-		case 'not_selected': {
-			logger.error('no environment selected');
+	if (secretsResult.kind === 'fail') {
+		logger.error('failed to destroy environment');
+		logger.error(String(secretsResult.error));
+		return;
+	}
+
+	for (const resource of destroyedResources) {
+		if (resource.status === 'not_found') {
+			logger.info(`${resource.label} not found`);
 		}
 	}
+
+	logger.info(`environment "${environment.id}" destroyed successfully`);
 }
 
 async function promptForDestroyConfirmation(): Promise<string | null> {

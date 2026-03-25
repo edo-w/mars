@@ -1,13 +1,15 @@
 import path from 'node:path';
+import type { ConfigService } from '#src/cli/app/config/config-service';
 import { createDefaultMarsState, MarsState } from '#src/cli/app/state/state-shapes';
-import { readMarsConfig } from '#src/cli/boot/config';
 import { normalizePath } from '#src/lib/fs';
 import type { Vfs } from '#src/lib/vfs';
 
 export class StateService {
+	configService: ConfigService;
 	vfs: Vfs;
 
-	constructor(vfs: Vfs) {
+	constructor(vfs: Vfs, configService: ConfigService) {
+		this.configService = configService;
 		this.vfs = vfs;
 	}
 
@@ -41,7 +43,7 @@ export class StateService {
 	}
 
 	async getStateFilePath(): Promise<string> {
-		const config = await readMarsConfig(this.vfs);
+		const config = await this.configService.get();
 
 		return path.posix.join(normalizePath(config.work_path), 'state.json');
 	}

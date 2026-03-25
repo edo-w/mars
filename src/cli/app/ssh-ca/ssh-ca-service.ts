@@ -1,13 +1,6 @@
 import path from 'node:path';
-import {
-	DeleteObjectCommand,
-	GetObjectCommand,
-	HeadObjectCommand,
-	ListObjectsV2Command,
-	PutObjectCommand,
-	type S3Client,
-} from '@aws-sdk/client-s3';
-import type { EnvironmentService } from '#src/cli/app/environment/environment-service';
+import type { BackendFactory } from '#src/cli/app/backend/backend-factory';
+import type { ConfigService } from '#src/cli/app/config/config-service';
 import type { Environment } from '#src/cli/app/environment/environment-shapes';
 import type {
 	CreateSshCaResult,
@@ -17,39 +10,40 @@ import type {
 	SshCaResource,
 } from '#src/cli/app/ssh-ca/ssh-ca-shapes';
 import {
-	createSshCaDirectoryS3Path,
-	createSshCaPrivateKeyLocalPath,
-	createSshCaPrivateKeyS3Path,
-	createSshCaPublicKeyLocalPath,
-	createSshCaPublicKeyS3Path,
+	createSshCaDirectoryBackendPath,
+	createSshCaPrivateKeyBackendPath,
+	createSshCaPrivateKeyWorkPath,
+	createSshCaPublicKeyBackendPath,
+	createSshCaPublicKeyWorkPath,
 	SSH_CA_PRIVATE_KEY_SUFFIX,
 	SSH_CA_PUBLIC_KEY_SUFFIX,
 } from '#src/cli/app/ssh-ca/ssh-ca-shapes';
-import { readMarsConfig } from '#src/cli/boot/config';
-import { isMissingObjectError } from '#src/lib/s3';
 import type { SshKeygen } from '#src/lib/ssh';
 import type { Vfs } from '#src/lib/vfs';
 
 export class SshCaService {
-	environmentService: EnvironmentService;
-	s3Client: S3Client;
+	backendFactory: BackendFactory;
+	configService: ConfigService;
 	sshKeygen: SshKeygen;
 	vfs: Vfs;
 
-	constructor(vfs: Vfs, environmentService: EnvironmentService, s3Client: S3Client, sshKeygen: SshKeygen) {
-		this.environmentService = environmentService;
-		this.s3Client = s3Client;
+	constructor(vfs: Vfs, configService: ConfigService, backendFactory: BackendFactory, sshKeygen: SshKeygen) {
+		this.backendFactory = backendFactory;
+		this.configService = configService;
 		this.sshKeygen = sshKeygen;
 		this.vfs = vfs;
 	}
 
 	async list(environment: Environment): Promise<string[]> {
-		const bucket = await this.environmentService.getBucketName(environment);
-		const objectKeys = await this.listObjectKeys(bucket, createSshCaDirectoryS3Path(environment.id));
+		const backendService = await this.backendFactory.create();
+		const fileNames = await backendService.listDirectory(
+			environment,
+			createSshCaDirectoryBackendPath(environment.id),
+		);
 		const names = new Set<string>();
 
-		for (const objectKey of objectKeys) {
-			const name = this.parseSshCaName(objectKey);
+		for (const fileName of fileNames) {
+			const name = this.parseSshCaName(fileName);
 
 			if (name !== null) {
 				names.add(name);
@@ -60,25 +54,27 @@ export class SshCaService {
 	}
 
 	async show(environment: Environment, name: string): Promise<SshCa | null> {
-		const bucket = await this.environmentService.getBucketName(environment);
-		const privateKeyPath = createSshCaPrivateKeyS3Path(environment.id, name);
-		const publicKeyPath = createSshCaPublicKeyS3Path(environment.id, name);
-		const privateKeyHead = await this.readObjectHead(bucket, privateKeyPath);
-		const publicKeyHead = await this.readObjectHead(bucket, publicKeyPath);
+		const backendService = await this.backendFactory.create();
+		const privateKeyPath = createSshCaPrivateKeyBackendPath(environment.id, name);
+		const publicKeyPath = createSshCaPublicKeyBackendPath(environment.id, name);
+		const privateKeyExists = await backendService.fileExists(environment, privateKeyPath);
+		const publicKeyExists = await backendService.fileExists(environment, publicKeyPath);
+		const createDate = await backendService.getLastModifiedDate(environment, privateKeyPath);
 
-		if (privateKeyHead === null || publicKeyHead === null) {
+		if (!privateKeyExists || !publicKeyExists) {
 			return null;
 		}
 
 		return {
-			create_date: privateKeyHead.LastModified ?? new Date(0),
+			create_date: createDate ?? new Date(0),
 			name,
-			private_key: `s3://${bucket}/${privateKeyPath}`,
-			public_key: `s3://${bucket}/${publicKeyPath}`,
+			private_key: await backendService.getFilePath(environment, privateKeyPath),
+			public_key: await backendService.getFilePath(environment, publicKeyPath),
 		};
 	}
 
 	async create(environment: Environment, name: string, passphrase: string): Promise<CreateSshCaResult> {
+		const backendService = await this.backendFactory.create();
 		const localPaths = await this.getLocalPaths(environment.id, name);
 
 		if (
@@ -91,12 +87,9 @@ export class SshCaService {
 			};
 		}
 
-		const bucket = await this.environmentService.getBucketName(environment);
-		const s3Paths = this.getS3Paths(environment.id, name);
-
 		if (
-			(await this.objectExists(bucket, s3Paths.privateKeyPath)) ||
-			(await this.objectExists(bucket, s3Paths.publicKeyPath))
+			(await backendService.fileExists(environment, createSshCaPrivateKeyBackendPath(environment.id, name))) ||
+			(await backendService.fileExists(environment, createSshCaPublicKeyBackendPath(environment.id, name)))
 		) {
 			return {
 				kind: 'already_exists',
@@ -129,8 +122,16 @@ export class SshCaService {
 			await this.vfs.removeFile(generatedPaths.publicKeyPath);
 		}
 
-		await this.putObject(bucket, s3Paths.privateKeyPath, privateKeyContents);
-		await this.putObject(bucket, s3Paths.publicKeyPath, publicKeyContents);
+		await backendService.writeTextFile(
+			environment,
+			createSshCaPrivateKeyBackendPath(environment.id, name),
+			privateKeyContents,
+		);
+		await backendService.writeTextFile(
+			environment,
+			createSshCaPublicKeyBackendPath(environment.id, name),
+			publicKeyContents,
+		);
 
 		const sshCa = await this.show(environment, name);
 
@@ -145,18 +146,20 @@ export class SshCaService {
 	}
 
 	async pull(environment: Environment, name: string): Promise<PullSshCaResult> {
-		const bucket = await this.environmentService.getBucketName(environment);
-		const s3Paths = this.getS3Paths(environment.id, name);
-		const privateKeyHead = await this.readObjectHead(bucket, s3Paths.privateKeyPath);
-		const publicKeyHead = await this.readObjectHead(bucket, s3Paths.publicKeyPath);
+		const backendService = await this.backendFactory.create();
+		const privateKeyPath = createSshCaPrivateKeyBackendPath(environment.id, name);
+		const publicKeyPath = createSshCaPublicKeyBackendPath(environment.id, name);
 		const missingFiles: string[] = [];
+		const privateKeyExists = await backendService.fileExists(environment, privateKeyPath);
+		const publicKeyExists = await backendService.fileExists(environment, publicKeyPath);
+		const createDate = await backendService.getLastModifiedDate(environment, privateKeyPath);
 
-		if (privateKeyHead === null) {
-			missingFiles.push(s3Paths.privateKeyPath);
+		if (!privateKeyExists) {
+			missingFiles.push(privateKeyPath);
 		}
 
-		if (publicKeyHead === null) {
-			missingFiles.push(s3Paths.publicKeyPath);
+		if (!publicKeyExists) {
+			missingFiles.push(publicKeyPath);
 		}
 
 		if (missingFiles.length === 2) {
@@ -176,9 +179,8 @@ export class SshCaService {
 
 		const localPaths = await this.getLocalPaths(environment.id, name);
 		const localDirectoryPath = path.posix.dirname(localPaths.privateKeyPath);
-		const createDate = privateKeyHead?.LastModified ?? new Date(0);
-		const privateKeyContents = await this.getObjectText(bucket, s3Paths.privateKeyPath);
-		const publicKeyContents = await this.getObjectText(bucket, s3Paths.publicKeyPath);
+		const privateKeyContents = await backendService.readTextFile(environment, privateKeyPath);
+		const publicKeyContents = await backendService.readTextFile(environment, publicKeyPath);
 
 		await this.vfs.ensureDirectory(localDirectoryPath);
 		await this.vfs.writeTextFile(localPaths.privateKeyPath, privateKeyContents);
@@ -187,10 +189,10 @@ export class SshCaService {
 		return {
 			kind: 'pulled',
 			ssh_ca: {
-				create_date: createDate,
+				create_date: createDate ?? new Date(0),
 				name,
-				private_key: `s3://${bucket}/${s3Paths.privateKeyPath}`,
-				public_key: `s3://${bucket}/${s3Paths.publicKeyPath}`,
+				private_key: await backendService.getFilePath(environment, privateKeyPath),
+				public_key: await backendService.getFilePath(environment, publicKeyPath),
 			},
 		};
 	}
@@ -211,20 +213,21 @@ export class SshCaService {
 	}
 
 	async describeDestroy(environment: Environment, name: string): Promise<SshCaResource[] | null> {
-		const bucket = await this.environmentService.getBucketName(environment);
-		const s3Paths = this.getS3Paths(environment.id, name);
+		const backendService = await this.backendFactory.create();
+		const privateKeyPath = createSshCaPrivateKeyBackendPath(environment.id, name);
+		const publicKeyPath = createSshCaPublicKeyBackendPath(environment.id, name);
 		const localPaths = await this.getLocalPaths(environment.id, name);
 		const resources: SshCaResource[] = [];
 
-		if (await this.objectExists(bucket, s3Paths.privateKeyPath)) {
+		if (await backendService.fileExists(environment, privateKeyPath)) {
 			resources.push({
-				label: `s3 object "${s3Paths.privateKeyPath}"`,
+				label: `backend file "${await backendService.getFilePath(environment, privateKeyPath)}"`,
 			});
 		}
 
-		if (await this.objectExists(bucket, s3Paths.publicKeyPath)) {
+		if (await backendService.fileExists(environment, publicKeyPath)) {
 			resources.push({
-				label: `s3 object "${s3Paths.publicKeyPath}"`,
+				label: `backend file "${await backendService.getFilePath(environment, publicKeyPath)}"`,
 			});
 		}
 
@@ -244,8 +247,9 @@ export class SshCaService {
 	}
 
 	async destroy(environment: Environment, name: string): Promise<DestroySshCaResult> {
-		const bucket = await this.environmentService.getBucketName(environment);
-		const s3Paths = this.getS3Paths(environment.id, name);
+		const backendService = await this.backendFactory.create();
+		const privateKeyPath = createSshCaPrivateKeyBackendPath(environment.id, name);
+		const publicKeyPath = createSshCaPublicKeyBackendPath(environment.id, name);
 		const localPaths = await this.getLocalPaths(environment.id, name);
 		const resources = await this.describeDestroy(environment, name);
 
@@ -256,12 +260,12 @@ export class SshCaService {
 			};
 		}
 
-		if (await this.objectExists(bucket, s3Paths.privateKeyPath)) {
-			await this.deleteObject(bucket, s3Paths.privateKeyPath);
+		if (await backendService.fileExists(environment, privateKeyPath)) {
+			await backendService.removeFile(environment, privateKeyPath);
 		}
 
-		if (await this.objectExists(bucket, s3Paths.publicKeyPath)) {
-			await this.deleteObject(bucket, s3Paths.publicKeyPath);
+		if (await backendService.fileExists(environment, publicKeyPath)) {
+			await backendService.removeFile(environment, publicKeyPath);
 		}
 
 		if (await this.vfs.fileExists(localPaths.privateKeyPath)) {
@@ -278,43 +282,12 @@ export class SshCaService {
 		};
 	}
 
-	private async deleteObject(bucket: string, objectKey: string): Promise<void> {
-		await this.s3Client.send(
-			new DeleteObjectCommand({
-				Bucket: bucket,
-				Key: objectKey,
-			}),
-		);
-	}
-
-	private async getObjectText(bucket: string, objectKey: string): Promise<string> {
-		const result = await this.s3Client.send(
-			new GetObjectCommand({
-				Bucket: bucket,
-				Key: objectKey,
-			}),
-		);
-
-		if (result.Body === undefined) {
-			throw new Error(`Missing body for s3 object "${objectKey}"`);
-		}
-
-		return result.Body.transformToString();
-	}
-
-	private getS3Paths(env: string, name: string): { privateKeyPath: string; publicKeyPath: string } {
-		return {
-			privateKeyPath: createSshCaPrivateKeyS3Path(env, name),
-			publicKeyPath: createSshCaPublicKeyS3Path(env, name),
-		};
-	}
-
 	private async getLocalPaths(env: string, name: string): Promise<{ privateKeyPath: string; publicKeyPath: string }> {
-		const config = await readMarsConfig(this.vfs);
+		const config = await this.configService.get();
 
 		return {
-			privateKeyPath: createSshCaPrivateKeyLocalPath(config.work_path, env, name),
-			publicKeyPath: createSshCaPublicKeyLocalPath(config.work_path, env, name),
+			privateKeyPath: createSshCaPrivateKeyWorkPath(config.work_path, env, name),
+			publicKeyPath: createSshCaPublicKeyWorkPath(config.work_path, env, name),
 		};
 	}
 
@@ -330,37 +303,6 @@ export class SshCaService {
 		};
 	}
 
-	private async listObjectKeys(bucket: string, prefix: string): Promise<string[]> {
-		const objectKeys: string[] = [];
-		let continuationToken: string | undefined;
-		const normalizedPrefix = `${prefix}/`;
-
-		do {
-			const result = await this.s3Client.send(
-				new ListObjectsV2Command({
-					Bucket: bucket,
-					ContinuationToken: continuationToken,
-					Prefix: normalizedPrefix,
-				}),
-			);
-			const pageObjectKeys =
-				result.Contents?.flatMap((object) => {
-					return object.Key?.startsWith(normalizedPrefix) ? [object.Key] : [];
-				}) ?? [];
-
-			objectKeys.push(...pageObjectKeys);
-			continuationToken = result.IsTruncated ? result.NextContinuationToken : undefined;
-		} while (continuationToken !== undefined);
-
-		return objectKeys;
-	}
-
-	private async objectExists(bucket: string, objectKey: string): Promise<boolean> {
-		const objectHead = await this.readObjectHead(bucket, objectKey);
-
-		return objectHead !== null;
-	}
-
 	private parseSshCaName(objectKey: string): string | null {
 		const objectName = path.posix.basename(objectKey);
 
@@ -373,32 +315,5 @@ export class SshCaService {
 		}
 
 		return null;
-	}
-
-	private async putObject(bucket: string, objectKey: string, body: string): Promise<void> {
-		await this.s3Client.send(
-			new PutObjectCommand({
-				Bucket: bucket,
-				Body: body,
-				Key: objectKey,
-			}),
-		);
-	}
-
-	private async readObjectHead(bucket: string, objectKey: string): Promise<{ LastModified?: Date } | null> {
-		try {
-			return await this.s3Client.send(
-				new HeadObjectCommand({
-					Bucket: bucket,
-					Key: objectKey,
-				}),
-			);
-		} catch (error) {
-			if (!isMissingObjectError(error)) {
-				throw error;
-			}
-
-			return null;
-		}
 	}
 }
