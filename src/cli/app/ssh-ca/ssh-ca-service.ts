@@ -197,7 +197,7 @@ export class SshCaService {
 		};
 	}
 
-	async rm(environment: Environment, name: string): Promise<boolean> {
+	async remove(environment: Environment, name: string): Promise<boolean> {
 		const localPaths = await this.getLocalPaths(environment.id, name);
 		const privateKeyExists = await this.vfs.fileExists(localPaths.privateKeyPath);
 		const publicKeyExists = await this.vfs.fileExists(localPaths.publicKeyPath);

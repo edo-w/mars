@@ -1,11 +1,11 @@
 {
-  "namespace": "app",
-  "envs_path": "infra/envs",
-  "work_path": ".mars",
-  "backend": {
-    "local": {}
-  },
-  "secrets": {
-    "password": {}
-  }
+	"namespace": "app",
+	"envs_path": "infra/envs",
+	"work_path": ".mars",
+	"backend": {
+		"local": {}
+	},
+	"secrets": {
+		"password": {}
+	}
 }

@@ -6,11 +6,15 @@ import { BackendFactory } from '#src/cli/app/backend/backend-factory';
 import { ConfigService } from '#src/cli/app/config/config-service';
 import { EnvironmentService } from '#src/cli/app/environment/environment-service';
 import { InitService } from '#src/cli/app/init/init-service';
+import { KeyAgentManager } from '#src/cli/app/key-agent/key-agent-manager';
+import { KeyAgentServer } from '#src/cli/app/key-agent/key-agent-server';
+import { KeyAgentService } from '#src/cli/app/key-agent/key-agent-service';
 import { KeyAgentSecretsService } from '#src/cli/app/secrets/key-agent-secrets-service';
 import { KmsSecretsProvider } from '#src/cli/app/secrets/kms-secrets-provider';
 import { PasswordSecretsProvider } from '#src/cli/app/secrets/password-secrets-provider';
 import { SecretsBootstrapperFactory } from '#src/cli/app/secrets/secrets-bootstrapper-factory';
 import { SecretsProviderFactory } from '#src/cli/app/secrets/secrets-provider-factory';
+import { ISecretsService } from '#src/cli/app/secrets/secrets-service';
 import { SshCaService } from '#src/cli/app/ssh-ca/ssh-ca-service';
 import { StateService } from '#src/cli/app/state/state-service';
 import { SshKeygen } from '#src/lib/ssh';
@@ -63,10 +67,32 @@ export function createContainer(options: CreateContainerOptions): Tiny {
 	container.addScopedFactory(SecretsProviderFactory, (t) => {
 		return new SecretsProviderFactory(t);
 	});
-	container.addScopedFactory(KeyAgentSecretsService, (t) => {
+	container.addScopedFactory(KeyAgentManager, (t) => {
+		const stateService = t.get(StateService);
+
+		return new KeyAgentManager(stateService);
+	});
+	container.addScopedFactory(KeyAgentService, (t) => {
+		const environmentService = t.get(EnvironmentService);
 		const secretsProviderFactory = t.get(SecretsProviderFactory);
 
-		return new KeyAgentSecretsService(secretsProviderFactory);
+		return new KeyAgentService(environmentService, secretsProviderFactory);
+	});
+	container.addScopedFactory(KeyAgentServer, (t) => {
+		const stateService = t.get(StateService);
+		const keyAgentService = t.get(KeyAgentService);
+
+		return new KeyAgentServer(stateService, keyAgentService);
+	});
+	container.addScopedFactory(KeyAgentSecretsService, (t) => {
+		const keyAgentManager = t.get(KeyAgentManager);
+
+		return new KeyAgentSecretsService(keyAgentManager);
+	});
+	container.addScopedFactory(ISecretsService, (t) => {
+		const keyAgentSecretsService = t.get(KeyAgentSecretsService);
+
+		return keyAgentSecretsService;
 	});
 	container.addScopedFactory(SecretsBootstrapperFactory, (t) => {
 		return new SecretsBootstrapperFactory(t);

@@ -2,6 +2,7 @@ import type { Tiny } from '@edo-w/tiny';
 import { Command } from 'commander';
 import { createEnvCommand } from '#src/cli/commands/env-command';
 import { createInitCommand } from '#src/cli/commands/init-command';
+import { createKeyAgentCommand } from '#src/cli/commands/key-agent-command';
 import { createSshCommand } from '#src/cli/commands/ssh-command';
 
 export function createProgram(container: Tiny): Command {
@@ -11,6 +12,7 @@ export function createProgram(container: Tiny): Command {
 	program.description('Mars CLI');
 	program.addCommand(createInitCommand(container));
 	program.addCommand(createEnvCommand(container));
+	program.addCommand(createKeyAgentCommand(container));
 	program.addCommand(createSshCommand(container));
 
 	return program;

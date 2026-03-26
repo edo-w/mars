@@ -67,7 +67,7 @@ export async function handleSshCaRemoveCommand(fields: unknown, container: Tiny)
 	}
 
 	const sshCaService = container.get(SshCaService);
-	const removed = await sshCaService.rm(environment, input.name);
+	const removed = await sshCaService.remove(environment, input.name);
 
 	if (removed) {
 		logger.info(`removed local ssh ca "${input.name}"`);

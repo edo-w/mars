@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { ConfigService } from '#src/cli/app/config/config-service';
-import { createDefaultMarsState, MarsState } from '#src/cli/app/state/state-shapes';
+import { createDefaultMarsState, type KeyAgentState, MarsState } from '#src/cli/app/state/state-shapes';
 import { normalizePath } from '#src/lib/fs';
 import type { Vfs } from '#src/lib/vfs';
 
@@ -13,20 +13,34 @@ export class StateService {
 		this.vfs = vfs;
 	}
 
+	async clearKeyAgentIfMatches(pid: number, token: string): Promise<void> {
+		const state = await this.readState();
+		const keyAgent = state.key_agent;
+
+		if (keyAgent === null) {
+			return;
+		}
+
+		const pidMatches = keyAgent.pid === pid;
+		const tokenMatches = keyAgent.token === token;
+
+		if (!pidMatches || !tokenMatches) {
+			return;
+		}
+
+		await this.setKeyAgent(null);
+	}
+
+	async getKeyAgent(): Promise<KeyAgentState | null> {
+		const state = await this.readState();
+
+		return state.key_agent;
+	}
+
 	async getSelectedEnvironmentPath(): Promise<string | null> {
 		const state = await this.readState();
 
 		return state.selected_environment;
-	}
-
-	async setSelectedEnvironmentPath(selectedEnvironmentPath: string): Promise<void> {
-		const stateFilePath = await this.getStateFilePath();
-		const state = new MarsState({
-			selected_environment: normalizePath(selectedEnvironmentPath),
-		});
-		const stateContents = `${JSON.stringify(state, null, 2)}\n`;
-
-		await this.vfs.writeTextFile(stateFilePath, stateContents);
 	}
 
 	async readState(): Promise<MarsState> {
@@ -42,9 +56,38 @@ export class StateService {
 		return new MarsState(stateFields);
 	}
 
-	async getStateFilePath(): Promise<string> {
+	async setKeyAgent(keyAgent: KeyAgentState | null): Promise<void> {
+		const state = await this.readState();
+
+		await this.writeState(
+			new MarsState({
+				key_agent: keyAgent,
+				selected_environment: state.selected_environment,
+			}),
+		);
+	}
+
+	async setSelectedEnvironmentPath(selectedEnvironmentPath: string): Promise<void> {
+		const state = await this.readState();
+
+		await this.writeState(
+			new MarsState({
+				key_agent: state.key_agent,
+				selected_environment: normalizePath(selectedEnvironmentPath),
+			}),
+		);
+	}
+
+	private async getStateFilePath(): Promise<string> {
 		const config = await this.configService.get();
 
 		return path.posix.join(normalizePath(config.work_path), 'state.json');
+	}
+
+	private async writeState(state: MarsState): Promise<void> {
+		const stateFilePath = await this.getStateFilePath();
+		const stateContents = `${JSON.stringify(state, null, 2)}\n`;
+
+		await this.vfs.writeTextFile(stateFilePath, stateContents);
 	}
 }

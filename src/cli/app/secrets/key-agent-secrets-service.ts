@@ -1,35 +1,65 @@
 import type { Environment } from '#src/cli/app/environment/environment-shapes';
-import { decryptBytes, encryptBytes } from '#src/cli/app/secrets/secrets-crypto';
-import type { SecretsProviderFactory } from '#src/cli/app/secrets/secrets-provider-factory';
+import { KeyAgentClient } from '#src/cli/app/key-agent/key-agent-client';
+import type { KeyAgentManager } from '#src/cli/app/key-agent/key-agent-manager';
+import { KeyAgentDecryptRequest, KeyAgentEncryptRequest } from '#src/cli/app/key-agent/key-agent-shapes';
 import type { SecretsService } from '#src/cli/app/secrets/secrets-service';
 import type { EncryptedSecretRecord } from '#src/cli/app/secrets/secrets-shapes';
+import { fromBase64, toBase64 } from '#src/cli/app/secrets/secrets-shapes';
 
 export class KeyAgentSecretsService implements SecretsService {
-	secretsProviderFactory: SecretsProviderFactory;
+	keyAgentClient: KeyAgentClient | null;
+	keyAgentSocketPath: string | null;
+	keyAgentManager: KeyAgentManager;
 
-	constructor(secretsProviderFactory: SecretsProviderFactory) {
-		this.secretsProviderFactory = secretsProviderFactory;
+	constructor(keyAgentManager: KeyAgentManager) {
+		this.keyAgentClient = null;
+		this.keyAgentManager = keyAgentManager;
+		this.keyAgentSocketPath = null;
 	}
 
 	async decryptText(environment: Environment, encryptedSecret: EncryptedSecretRecord): Promise<string> {
-		const dataKey = await this.getDataKey(environment);
-		const plaintext = await decryptBytes(dataKey, encryptedSecret);
-		const textDecoder = new TextDecoder();
+		const keyAgent = await this.keyAgentManager.ensureRunning();
+		const client = this.getKeyAgentClient(keyAgent.socket);
+		const request = new KeyAgentDecryptRequest({
+			encrypted_secret: encryptedSecret,
+			environment: environment.id,
+			token: keyAgent.token,
+			type: 'decrypt',
+		});
+		const response = await client.decrypt(request);
+		const plaintext = new TextDecoder().decode(fromBase64(response.plaintext));
 
-		return textDecoder.decode(plaintext);
+		return plaintext;
 	}
 
 	async encryptText(environment: Environment, plaintext: string): Promise<EncryptedSecretRecord> {
-		const dataKey = await this.getDataKey(environment);
-		const textEncoder = new TextEncoder();
-		const plaintextBytes = textEncoder.encode(plaintext);
+		const keyAgent = await this.keyAgentManager.ensureRunning();
+		const client = this.getKeyAgentClient(keyAgent.socket);
+		const plaintextBytes = new TextEncoder().encode(plaintext);
+		const request = new KeyAgentEncryptRequest({
+			environment: environment.id,
+			plaintext: toBase64(plaintextBytes),
+			token: keyAgent.token,
+			type: 'encrypt',
+		});
+		const response = await client.encrypt(request);
 
-		return encryptBytes(dataKey, plaintextBytes);
+		return response.encrypted_secret;
 	}
 
-	private async getDataKey(environment: Environment): Promise<Uint8Array> {
-		const secretsProvider = await this.secretsProviderFactory.create();
+	private getKeyAgentClient(socketPath: string): KeyAgentClient {
+		const currentClient = this.keyAgentClient;
+		const canReuseClient = currentClient !== null && this.keyAgentSocketPath === socketPath;
 
-		return secretsProvider.getDataKey(environment);
+		if (canReuseClient) {
+			return currentClient;
+		}
+
+		const keyAgentClient = new KeyAgentClient(socketPath);
+
+		this.keyAgentClient = keyAgentClient;
+		this.keyAgentSocketPath = socketPath;
+
+		return keyAgentClient;
 	}
 }

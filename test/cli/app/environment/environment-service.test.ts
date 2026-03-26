@@ -50,6 +50,7 @@ test('EnvironmentService marks the selected environment during list', async () =
 	const { service, vfs } = sut();
 	const marsConfig = toMarsConfigText();
 	const stateFile = toJsonText({
+		key_agent: null,
 		selected_environment: 'infra/envs/dev/environment.yml',
 	});
 	const devEnvironment = stringify({
@@ -73,6 +74,7 @@ test('EnvironmentService returns the selected environment', async () => {
 	const { service, vfs } = sut();
 	const marsConfig = toMarsConfigText();
 	const stateFile = toJsonText({
+		key_agent: null,
 		selected_environment: 'infra/envs/dev/environment.yml',
 	});
 	const devEnvironment = stringify({
@@ -148,6 +150,7 @@ test('EnvironmentService selects an environment by id', async () => {
 	const environment = await service.select('gl-dev');
 	const stateFile = vfs.files.get('/repo/.mars/state.json');
 	const expectedStateFile = toJsonText({
+		key_agent: null,
 		selected_environment: 'infra/envs/dev/environment.yml',
 	});
 

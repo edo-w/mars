@@ -501,7 +501,7 @@ test('SshCaService remove only deletes local files for the resolved environment'
 
 	const environmentService = t.get(EnvironmentService);
 	const environment = await environmentService.get('gl-dev');
-	const removed = environment === null ? false : await service.rm(environment, 'default');
+	const removed = environment === null ? false : await service.remove(environment, 'default');
 	const devPrivateKey = vfs.files.get('/repo/.mars/env/gl-dev/ssh/ca/default_ca_ed25519.key');
 	const testPrivateKey = vfs.files.get('/repo/.mars/env/gl-test/ssh/ca/default_ca_ed25519.key');
 

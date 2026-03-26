@@ -40,6 +40,9 @@ const logger = getLogger(['mars', 'ssh']);
 - Configure Logtape in `src/boot/`.
 - Keep formatter, sink, and logger configuration in boot helpers.
 - Call logging setup early in the app entrypoint before command execution.
+- When a special command mode needs different logging behavior at runtime,
+  reconfigure Logtape through a boot helper using `configure({ reset: true, ... })`
+  instead of layering ad hoc sink changes onto the existing setup.
 
 Typical flow:
 
@@ -54,6 +57,10 @@ Typical flow:
 - Keep timestamp, level, category, and message formatting in logging setup
   helpers.
 - Do not duplicate formatting logic at individual callsites.
+- When configuring both console and file sinks, do not reuse a console
+  formatter that injects ANSI color or terminal styling into file output.
+- Prefer separate formatters for console and file sinks when the console format
+  uses color, symbols, or other terminal-only presentation details.
 
 ## Conventions
 

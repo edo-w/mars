@@ -148,6 +148,11 @@ class ExampleRecord {
 - The same rule applies to related transformations: extract names like
   `entryNameIsEmpty`, `directoryHasTrailingSlash`, or `contactIsInactive`
   instead of burying the intent inside one expression.
+- When branching on a known finite set of kinds or message types, keep the
+  matching exhaustive. Do not silently default to an unrelated valid kind just
+  to keep execution moving.
+- If the code cannot determine a valid kind, throw or surface an explicit
+  `unknown` state instead of masking the bug behind a fallback branch.
 
 ## Validation
 
