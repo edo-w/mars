@@ -1,16 +1,17 @@
 import { EventEmitter } from 'node:events';
 import net from 'node:net';
-import { getLogger, type Logger } from '@logtape/logtape';
 import {
 	type JsonRpcServerErrorEvent,
 	type JsonRpcServerMessageEvent,
 	MessageEnvelope,
 } from '#src/lib/json-rpc-shapes';
+import type { VLogger } from '#src/lib/vlogger';
+import { vlogManager } from '#src/lib/vlogger';
 
 export class JsonRpcServer {
 	dataBuffers: Map<number, string>;
 	emitter: EventEmitter;
-	logger: Logger;
+	logger: VLogger;
 	nextSocketId: number;
 	server: net.Server | null;
 	socketIds: Map<net.Socket, number>;
@@ -20,7 +21,7 @@ export class JsonRpcServer {
 	constructor(socketPath: string) {
 		this.dataBuffers = new Map();
 		this.emitter = new EventEmitter();
-		this.logger = getLogger(['mars', 'json-rpc', 'server']);
+		this.logger = vlogManager.getLogger(['mars', 'json-rpc', 'server']);
 		this.nextSocketId = 1;
 		this.server = null;
 		this.socketIds = new Map();

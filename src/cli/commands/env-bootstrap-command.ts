@@ -1,5 +1,4 @@
 import type { Tiny } from '@edo-w/tiny';
-import { getLogger, type Logger } from '@logtape/logtape';
 import { Command } from 'commander';
 import * as z from 'zod';
 import type { BackendBootstrapResult } from '#src/cli/app/backend/backend-bootstrapper';
@@ -7,6 +6,8 @@ import { BackendBootstrapperFactory } from '#src/cli/app/backend/backend-bootstr
 import { EnvironmentService } from '#src/cli/app/environment/environment-service';
 import type { SecretsBootstrapResult } from '#src/cli/app/secrets/secrets-bootstrapper';
 import { SecretsBootstrapperFactory } from '#src/cli/app/secrets/secrets-bootstrapper-factory';
+import type { VLogger } from '#src/lib/vlogger';
+import { vlogManager } from '#src/lib/vlogger';
 
 export class EnvBootstrapCommandInput {
 	static schema = z.object({
@@ -40,7 +41,7 @@ export function createEnvBootstrapCommand(container: Tiny): Command {
 }
 
 export async function handleEnvBootstrapCommand(fields: unknown, container: Tiny): Promise<void> {
-	const logger = getLogger(['mars', 'env', 'bootstrap']);
+	const logger = vlogManager.getLogger(['mars', 'env', 'bootstrap']);
 	let input: EnvBootstrapCommandInput;
 
 	try {
@@ -76,7 +77,7 @@ export async function handleEnvBootstrapCommand(fields: unknown, container: Tiny
 	logBootstrapResult(secretsResult, logger);
 }
 
-function logBootstrapResult(result: BackendBootstrapResult | SecretsBootstrapResult, logger: Logger): void {
+function logBootstrapResult(result: BackendBootstrapResult | SecretsBootstrapResult, logger: VLogger): void {
 	if (result.kind === 'noop') {
 		return;
 	}

@@ -9,6 +9,7 @@ This project uses Logtape for application logging.
 - Use structured application logging consistently.
 - Keep logging setup outside business logic and command handlers.
 - Write directly to the console only when that is intentionally required.
+- Keep the logger creation path easy to swap in tests.
 
 ## Core Rules
 
@@ -23,16 +24,19 @@ This project uses Logtape for application logging.
 
 ## Logger Usage
 
-- Import `getLogger` from `@logtape/logtape`.
+- In normal Mars application code, create loggers through the local
+  `vlogManager` abstraction instead of importing Logtape `getLogger(...)`
+  directly.
 - Create loggers with stable category arrays.
 - Reuse categories that reflect the area of the app, command, or feature.
 - Do not register loggers in Tiny by default; code that needs a logger should
-  create it directly with `getLogger(...)`.
+  create it directly through `vlogManager`.
+- In tests, prefer `vlogManager.setFactory(...)` over mocking Logtape imports.
 
 Example:
 
 ```ts
-const logger = getLogger(['mars', 'ssh']);
+const logger = vlogManager.getLogger(['mars', 'ssh']);
 ```
 
 ## CLI Logging Setup

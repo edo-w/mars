@@ -1,12 +1,12 @@
 import type { Tiny } from '@edo-w/tiny';
-import { getLogger } from '@logtape/logtape';
 import { Command } from 'commander';
-import Enquirer from 'enquirer';
 import * as z from 'zod';
 import { BackendBootstrapperFactory } from '#src/cli/app/backend/backend-bootstrapper-factory';
 import { EnvironmentService } from '#src/cli/app/environment/environment-service';
 import type { EnvironmentResource } from '#src/cli/app/environment/environment-shapes';
 import { SecretsBootstrapperFactory } from '#src/cli/app/secrets/secrets-bootstrapper-factory';
+import { Tui } from '#src/lib/tui';
+import { vlogManager } from '#src/lib/vlogger';
 
 export class EnvDestroyCommandInput {
 	static schema = z.object({
@@ -40,7 +40,7 @@ export function createEnvDestroyCommand(container: Tiny): Command {
 }
 
 export async function handleEnvDestroyCommand(fields: unknown, container: Tiny): Promise<void> {
-	const logger = getLogger(['mars', 'env', 'destroy']);
+	const logger = vlogManager.getLogger(['mars', 'env', 'destroy']);
 	let input: EnvDestroyCommandInput;
 
 	try {
@@ -79,7 +79,8 @@ export async function handleEnvDestroyCommand(fields: unknown, container: Tiny):
 		logger.info(`- ${resource.label}`);
 	}
 
-	const confirmation = await promptForDestroyConfirmation();
+	const tui = container.get(Tui);
+	const confirmation = await tui.input('\nto confirm please enter the environment name');
 
 	if (confirmation !== environment.id) {
 		logger.error('invalid environment id');
@@ -118,18 +119,4 @@ export async function handleEnvDestroyCommand(fields: unknown, container: Tiny):
 	}
 
 	logger.info(`environment "${environment.id}" destroyed successfully`);
-}
-
-async function promptForDestroyConfirmation(): Promise<string | null> {
-	try {
-		const result = await Enquirer.prompt<{ confirmation: string }>({
-			message: '\nto confirm please enter the environment name',
-			name: 'confirmation',
-			type: 'input',
-		});
-
-		return result.confirmation;
-	} catch {
-		return null;
-	}
 }

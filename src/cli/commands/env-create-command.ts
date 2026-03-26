@@ -1,8 +1,8 @@
 import type { Tiny } from '@edo-w/tiny';
-import { getLogger } from '@logtape/logtape';
 import { Command } from 'commander';
 import * as z from 'zod';
 import { EnvironmentService } from '#src/cli/app/environment/environment-service';
+import { vlogManager } from '#src/lib/vlogger';
 
 export class EnvCreateCommandInput {
 	static schema = z.object({
@@ -31,7 +31,7 @@ export function createEnvCreateCommand(container: Tiny): Command {
 }
 
 export async function handleEnvCreateCommand(fields: unknown, container: Tiny): Promise<void> {
-	const logger = getLogger(['mars', 'env', 'create']);
+	const logger = vlogManager.getLogger(['mars', 'env', 'create']);
 	let input: EnvCreateCommandInput;
 
 	try {

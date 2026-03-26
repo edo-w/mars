@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
-import { test } from 'vitest';
+import os from 'node:os';
+import { test, vi } from 'vitest';
 import {
+	createKeyAgentState,
+	createSocketPath,
+	isRequestMessage,
+	isResponseMessage,
 	KeyAgentDecryptRequest,
 	KeyAgentDecryptResponse,
 	KeyAgentEncryptRequest,
@@ -11,6 +16,22 @@ import {
 	KeyAgentShutdownRequest,
 	KeyAgentShutdownResponse,
 } from '#src/cli/app/key-agent/key-agent-shapes';
+
+function withPlatform(platform: NodeJS.Platform, callback: () => void) {
+	const originalPlatform = process.platform;
+
+	Object.defineProperty(process, 'platform', {
+		value: platform,
+	});
+
+	try {
+		callback();
+	} finally {
+		Object.defineProperty(process, 'platform', {
+			value: originalPlatform,
+		});
+	}
+}
 
 test('KeyAgentPingRequest constructs from valid input', () => {
 	const request = new KeyAgentPingRequest({
@@ -202,4 +223,97 @@ test('KeyAgentErrorResponse rejects invalid input', () => {
 			type: 'encrypt',
 		});
 	});
+});
+
+test('createKeyAgentState builds a key-agent state with generated values', () => {
+	const originalRandomUuid = crypto.randomUUID;
+	let callCount = 0;
+
+	crypto.randomUUID = () => {
+		callCount += 1;
+
+		return callCount === 1 ? '11111111-1111-1111-1111-111111111111' : '22222222-2222-2222-2222-222222222222';
+	};
+
+	try {
+		const keyAgentState = createKeyAgentState(123);
+
+		assert.equal(keyAgentState.pid, 123);
+		assert.equal(keyAgentState.token, '11111111-1111-1111-1111-111111111111');
+		assert.equal(keyAgentState.socket, '\\\\.\\pipe\\mars-key-agent-22222222-2222-2222-2222-222222222222');
+	} finally {
+		crypto.randomUUID = originalRandomUuid;
+	}
+});
+
+test('createSocketPath builds a Windows named pipe path', () => {
+	withPlatform('win32', () => {
+		const socketPath = createSocketPath('abc');
+
+		assert.equal(socketPath, '\\\\.\\pipe\\mars-key-agent-abc');
+	});
+});
+
+test('createSocketPath builds a Unix socket path', () => {
+	withPlatform('linux', () => {
+		const tmpdir = vi.spyOn(os, 'tmpdir').mockReturnValue('/tmp');
+
+		try {
+			const socketPath = createSocketPath('abc');
+
+			assert.equal(socketPath, '/tmp/mars-key-agent-abc.sock');
+		} finally {
+			tmpdir.mockRestore();
+		}
+	});
+});
+
+test('isRequestMessage returns true for a valid request message', () => {
+	const requestMessage = {
+		token: 'token',
+		type: 'ping',
+	};
+	const result = isRequestMessage(requestMessage);
+
+	assert.equal(result, true);
+});
+
+test('isRequestMessage returns false for an invalid request message', () => {
+	const requestMessage = {
+		type: 'ping',
+	};
+	const result = isRequestMessage(requestMessage);
+
+	assert.equal(result, false);
+});
+
+test('isResponseMessage returns true for an ok response message', () => {
+	const responseMessage = {
+		ok: true,
+		type: 'ping',
+	};
+	const result = isResponseMessage(responseMessage);
+
+	assert.equal(result, true);
+});
+
+test('isResponseMessage returns true for an error response message', () => {
+	const responseMessage = {
+		error: 'boom',
+		ok: false,
+		type: 'ping',
+	};
+	const result = isResponseMessage(responseMessage);
+
+	assert.equal(result, true);
+});
+
+test('isResponseMessage returns false when an error response is missing the error text', () => {
+	const responseMessage = {
+		ok: false,
+		type: 'ping',
+	};
+	const result = isResponseMessage(responseMessage);
+
+	assert.equal(result, false);
 });

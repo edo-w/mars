@@ -1,7 +1,7 @@
 import type { Tiny } from '@edo-w/tiny';
-import { getLogger } from '@logtape/logtape';
 import { Command } from 'commander';
 import { KeyAgentManager } from '#src/cli/app/key-agent/key-agent-manager';
+import { vlogManager } from '#src/lib/vlogger';
 
 export function createKeyAgentStartCommand(container: Tiny): Command {
 	const command = new Command('start');
@@ -17,7 +17,7 @@ export function createKeyAgentStartCommand(container: Tiny): Command {
 }
 
 export async function handleKeyAgentStartCommand(container: Tiny): Promise<void> {
-	const logger = getLogger(['mars', 'key-agent', 'start']);
+	const logger = vlogManager.getLogger(['mars', 'key-agent', 'start']);
 	const keyAgentManager = container.get(KeyAgentManager);
 	const result = await keyAgentManager.start();
 

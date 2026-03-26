@@ -45,6 +45,19 @@ This keeps the Zod schema and runtime validation behavior honest.
 - Prefer explicit assertion messages when the failure would otherwise be
   unclear.
 - Prefer `vi.fn()` for simple collaborator test doubles.
+- Prefer real filesystem, socket, and process behavior when the test can stay
+  simple and stable that way, instead of aggressively mocking imports or
+  runtime modules.
+- Prefer mocking small local abstractions such as `VlogManager` or `Tui`
+  instead of mocking third-party package imports directly when the codebase
+  already provides a wrapper.
+- Use fake timers with `vi.useFakeTimers()` selectively for timer-driven
+  behavior where they materially improve the test.
+- Good fits for fake timers include idle timeout logic, retry or backoff loops,
+  delayed shutdown, and other code where waiting in real time would make the
+  test slow or flaky.
+- Do not default to fake timers for ordinary tests that are already clear and
+  reliable with real time.
 - When the same mock shape is reused across multiple tests, extract a shared
   mock factory under the relevant test support folder.
 - When multiple tests share the same object graph or service wiring, prefer a

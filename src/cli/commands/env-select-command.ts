@@ -1,9 +1,9 @@
 import type { Tiny } from '@edo-w/tiny';
-import { getLogger } from '@logtape/logtape';
 import { Command } from 'commander';
-import Enquirer from 'enquirer';
 import * as z from 'zod';
 import { EnvironmentService } from '#src/cli/app/environment/environment-service';
+import { Tui } from '#src/lib/tui';
+import { vlogManager } from '#src/lib/vlogger';
 
 export class EnvSelectCommandInput {
 	static schema = z.object({
@@ -32,7 +32,7 @@ export function createEnvSelectCommand(container: Tiny): Command {
 }
 
 export async function handleEnvSelectCommand(fields: unknown, container: Tiny): Promise<void> {
-	const logger = getLogger(['mars', 'env', 'select']);
+	const logger = vlogManager.getLogger(['mars', 'env', 'select']);
 	let input: EnvSelectCommandInput;
 
 	try {
@@ -46,6 +46,7 @@ export async function handleEnvSelectCommand(fields: unknown, container: Tiny): 
 	let environmentName = input.name;
 
 	if (environmentName === null) {
+		const tui = container.get(Tui);
 		const environments = await service.list();
 
 		if (environments.length === 0) {
@@ -53,7 +54,10 @@ export async function handleEnvSelectCommand(fields: unknown, container: Tiny): 
 			return;
 		}
 
-		environmentName = await selectEnvironmentName(environments.map((environment) => environment.id));
+		environmentName = await tui.autocomplete(
+			'Select environment',
+			environments.map((environment) => environment.id),
+		);
 
 		if (environmentName === null) {
 			return;
@@ -68,19 +72,4 @@ export async function handleEnvSelectCommand(fields: unknown, container: Tiny): 
 	}
 
 	logger.info(`selected "${environment.id}"`);
-}
-
-async function selectEnvironmentName(environmentNames: string[]): Promise<string | null> {
-	try {
-		const result = await Enquirer.prompt<{ environment: string }>({
-			choices: environmentNames,
-			message: 'Select environment',
-			name: 'environment',
-			type: 'autocomplete',
-		});
-
-		return result.environment;
-	} catch {
-		return null;
-	}
 }

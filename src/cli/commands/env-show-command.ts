@@ -1,10 +1,10 @@
 import type { Tiny } from '@edo-w/tiny';
-import { getLogger } from '@logtape/logtape';
 import { Command } from 'commander';
 import * as z from 'zod';
 import { BackendFactory } from '#src/cli/app/backend/backend-factory';
 import { EnvironmentService } from '#src/cli/app/environment/environment-service';
 import { SecretsProviderFactory } from '#src/cli/app/secrets/secrets-provider-factory';
+import { vlogManager } from '#src/lib/vlogger';
 
 export class EnvShowCommandInput {
 	static schema = z.object({
@@ -38,7 +38,7 @@ export function createEnvShowCommand(container: Tiny): Command {
 }
 
 export async function handleEnvShowCommand(fields: unknown, container: Tiny): Promise<void> {
-	const logger = getLogger(['mars', 'env', 'show']);
+	const logger = vlogManager.getLogger(['mars', 'env', 'show']);
 	let input: EnvShowCommandInput;
 
 	try {

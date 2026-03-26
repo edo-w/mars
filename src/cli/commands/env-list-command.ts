@@ -1,7 +1,7 @@
 import type { Tiny } from '@edo-w/tiny';
-import { getLogger } from '@logtape/logtape';
 import { Command } from 'commander';
 import { EnvironmentService } from '#src/cli/app/environment/environment-service';
+import { vlogManager } from '#src/lib/vlogger';
 
 export function createEnvListCommand(container: Tiny): Command {
 	const command = new Command('list');
@@ -15,7 +15,7 @@ export function createEnvListCommand(container: Tiny): Command {
 }
 
 export async function handleEnvListCommand(container: Tiny): Promise<void> {
-	const logger = getLogger(['mars', 'env', 'list']);
+	const logger = vlogManager.getLogger(['mars', 'env', 'list']);
 	const service = container.get(EnvironmentService);
 	const environments = await service.list();
 

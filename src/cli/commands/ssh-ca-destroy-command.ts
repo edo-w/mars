@@ -1,10 +1,10 @@
 import type { Tiny } from '@edo-w/tiny';
-import { getLogger } from '@logtape/logtape';
 import { Command } from 'commander';
-import Enquirer from 'enquirer';
 import * as z from 'zod';
 import { EnvironmentService } from '#src/cli/app/environment/environment-service';
 import { SshCaService } from '#src/cli/app/ssh-ca/ssh-ca-service';
+import { Tui } from '#src/lib/tui';
+import { vlogManager } from '#src/lib/vlogger';
 
 export class SshCaDestroyCommandInput {
 	static schema = z.object({
@@ -43,7 +43,7 @@ export function createSshCaDestroyCommand(container: Tiny): Command {
 }
 
 export async function handleSshCaDestroyCommand(fields: unknown, container: Tiny): Promise<void> {
-	const logger = getLogger(['mars', 'ssh', 'ca', 'destroy']);
+	const logger = vlogManager.getLogger(['mars', 'ssh', 'ca', 'destroy']);
 	let input: SshCaDestroyCommandInput;
 
 	try {
@@ -80,7 +80,8 @@ export async function handleSshCaDestroyCommand(fields: unknown, container: Tiny
 		logger.info(`- ${resource.label}`);
 	}
 
-	const confirmation = await promptForDestroyConfirmation();
+	const tui = container.get(Tui);
+	const confirmation = await tui.input('\nto confirm please enter the ssh ca name');
 
 	if (confirmation !== input.name) {
 		logger.error('invalid ssh ca name');
@@ -98,19 +99,5 @@ export async function handleSshCaDestroyCommand(fields: unknown, container: Tiny
 		case 'not_found': {
 			logger.error(`ssh ca "${result.name}" not found`);
 		}
-	}
-}
-
-async function promptForDestroyConfirmation(): Promise<string | null> {
-	try {
-		const result = await Enquirer.prompt<{ confirmation: string }>({
-			message: '\nto confirm please enter the ssh ca name',
-			name: 'confirmation',
-			type: 'input',
-		});
-
-		return result.confirmation;
-	} catch {
-		return null;
 	}
 }

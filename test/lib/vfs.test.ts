@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import fsp from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { test } from 'vitest';
 import { isMissingPathError, Vfs } from '#src/lib/vfs';
@@ -29,4 +31,130 @@ test('isMissingPathError returns false for non-ENOENT errors', () => {
 
 test('isMissingPathError returns false for non-errors', () => {
 	assert.equal(isMissingPathError({ code: 'ENOENT' }), false);
+});
+
+test('Vfs writes and reads a text file', async () => {
+	const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mars-vfs-'));
+	const vfs = new Vfs(tempDir);
+
+	try {
+		await vfs.writeTextFile('nested/file.txt', 'hello');
+
+		const fileContents = await vfs.readTextFile('nested/file.txt');
+
+		assert.equal(fileContents, 'hello');
+	} finally {
+		await fsp.rm(tempDir, {
+			force: true,
+			recursive: true,
+		});
+	}
+});
+
+test('Vfs ensureDirectory and directoryExists work together', async () => {
+	const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mars-vfs-'));
+	const vfs = new Vfs(tempDir);
+
+	try {
+		await vfs.ensureDirectory('nested/dir');
+
+		const hasDirectory = await vfs.directoryExists('nested/dir');
+
+		assert.equal(hasDirectory, true);
+	} finally {
+		await fsp.rm(tempDir, {
+			force: true,
+			recursive: true,
+		});
+	}
+});
+
+test('Vfs fileExists returns true for an existing file', async () => {
+	const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mars-vfs-'));
+	const vfs = new Vfs(tempDir);
+
+	try {
+		await fsp.writeFile(path.join(tempDir, 'file.txt'), 'hello', 'utf8');
+
+		const hasFile = await vfs.fileExists('file.txt');
+
+		assert.equal(hasFile, true);
+	} finally {
+		await fsp.rm(tempDir, {
+			force: true,
+			recursive: true,
+		});
+	}
+});
+
+test('Vfs listDirectory returns the directory entries', async () => {
+	const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mars-vfs-'));
+	const vfs = new Vfs(tempDir);
+
+	try {
+		await fsp.mkdir(path.join(tempDir, 'dir'));
+		await fsp.writeFile(path.join(tempDir, 'dir', 'a.txt'), 'a', 'utf8');
+		await fsp.writeFile(path.join(tempDir, 'dir', 'b.txt'), 'b', 'utf8');
+
+		const entries = await vfs.listDirectory('dir');
+
+		assert.deepEqual(entries.sort(), ['a.txt', 'b.txt']);
+	} finally {
+		await fsp.rm(tempDir, {
+			force: true,
+			recursive: true,
+		});
+	}
+});
+
+test('Vfs listDirectory returns an empty list for a missing directory', async () => {
+	const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mars-vfs-'));
+	const vfs = new Vfs(tempDir);
+
+	try {
+		const entries = await vfs.listDirectory('missing');
+
+		assert.deepEqual(entries, []);
+	} finally {
+		await fsp.rm(tempDir, {
+			force: true,
+			recursive: true,
+		});
+	}
+});
+
+test('Vfs removeFile removes an existing file', async () => {
+	const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mars-vfs-'));
+	const vfs = new Vfs(tempDir);
+
+	try {
+		await fsp.writeFile(path.join(tempDir, 'file.txt'), 'hello', 'utf8');
+
+		await vfs.removeFile('file.txt');
+
+		const hasFile = await vfs.fileExists('file.txt');
+
+		assert.equal(hasFile, false);
+	} finally {
+		await fsp.rm(tempDir, {
+			force: true,
+			recursive: true,
+		});
+	}
+});
+
+test('Vfs removeFile ignores missing files', async () => {
+	const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mars-vfs-'));
+	const vfs = new Vfs(tempDir);
+
+	try {
+		await vfs.removeFile('missing.txt');
+
+		assert.ok(true);
+	} finally {
+		await fsp.rm(tempDir, {
+			force: true,
+			recursive: true,
+		});
+	}
 });

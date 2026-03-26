@@ -1,7 +1,8 @@
 import net from 'node:net';
-import { getLogger, type Logger } from '@logtape/logtape';
 import { MessageEnvelope } from '#src/lib/json-rpc-shapes';
 import { PromiseSignal } from '#src/lib/promise-signal';
+import type { VLogger } from '#src/lib/vlogger';
+import { vlogManager } from '#src/lib/vlogger';
 
 const JSON_RPC_IDLE_TIMEOUT_MS = 30 * 1000;
 const JSON_RPC_REQUEST_TIMEOUT_MS = 5 * 1000;
@@ -15,7 +16,7 @@ interface PendingRequest {
 export class JsonRpcClient {
 	dataBuffer: string;
 	idleTimer: NodeJS.Timeout | null;
-	logger: Logger;
+	logger: VLogger;
 	nextId: number;
 	pending: Map<number, PendingRequest>;
 	socket: net.Socket | null;
@@ -25,7 +26,7 @@ export class JsonRpcClient {
 	constructor(socketPath: string) {
 		this.dataBuffer = '';
 		this.idleTimer = null;
-		this.logger = getLogger(['mars', 'json-rpc', 'client']);
+		this.logger = vlogManager.getLogger(['mars', 'json-rpc', 'client']);
 		this.nextId = 1;
 		this.pending = new Map();
 		this.socket = null;

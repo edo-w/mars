@@ -143,3 +143,89 @@ test('StateService merges key-agent updates with selected environment state', as
 
 	assert.equal(nextStateFile, expectedStateFile);
 });
+
+test('StateService reads the key-agent from state.json', async () => {
+	const { service, vfs } = sut();
+	const marsConfig = toMarsConfigText({
+		backend: {
+			local: {},
+		},
+	});
+	const stateFile = toJsonText({
+		key_agent: {
+			pid: 123,
+			socket: '/tmp/mars.sock',
+			token: 'token',
+		},
+		selected_environment: null,
+	});
+
+	vfs.setTextFile('mars.config.json', marsConfig);
+	vfs.setTextFile('.mars/state.json', stateFile);
+
+	const keyAgent = await service.getKeyAgent();
+
+	assert.equal(keyAgent === null, false);
+
+	if (keyAgent === null) {
+		throw new Error('expected key-agent to be present');
+	}
+
+	assert.equal(keyAgent.pid, 123);
+});
+
+test('StateService clears the key-agent when pid and token both match', async () => {
+	const { service, vfs } = sut();
+	const marsConfig = toMarsConfigText({
+		backend: {
+			local: {},
+		},
+	});
+	const stateFile = toJsonText({
+		key_agent: {
+			pid: 123,
+			socket: '/tmp/mars.sock',
+			token: 'token',
+		},
+		selected_environment: 'infra/envs/dev/environment.yml',
+	});
+
+	vfs.setTextFile('mars.config.json', marsConfig);
+	vfs.setTextFile('.mars/state.json', stateFile);
+
+	await service.clearKeyAgentIfMatches(123, 'token');
+
+	const nextStateFile = vfs.files.get('/repo/.mars/state.json');
+	const expectedStateFile = toJsonText({
+		key_agent: null,
+		selected_environment: 'infra/envs/dev/environment.yml',
+	});
+
+	assert.equal(nextStateFile, expectedStateFile);
+});
+
+test('StateService keeps the key-agent when pid or token do not match', async () => {
+	const { service, vfs } = sut();
+	const marsConfig = toMarsConfigText({
+		backend: {
+			local: {},
+		},
+	});
+	const stateFile = toJsonText({
+		key_agent: {
+			pid: 123,
+			socket: '/tmp/mars.sock',
+			token: 'token',
+		},
+		selected_environment: 'infra/envs/dev/environment.yml',
+	});
+
+	vfs.setTextFile('mars.config.json', marsConfig);
+	vfs.setTextFile('.mars/state.json', stateFile);
+
+	await service.clearKeyAgentIfMatches(999, 'token');
+
+	const nextStateFile = vfs.files.get('/repo/.mars/state.json');
+
+	assert.equal(nextStateFile, stateFile);
+});

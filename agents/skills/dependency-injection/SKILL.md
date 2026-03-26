@@ -113,6 +113,12 @@ tiny.addScopedFactory(UserService, (t) => {
 - Keep registration code centralized and predictable.
 - Do not pass hand-assembled dependency bags into command handlers when those
   values should come from the container.
+- For command-layer integrations such as prompts, prefer a small local
+  abstraction registered in Tiny over calling the third-party package directly
+  from handlers.
+- When that abstraction is already represented by a concrete class, register
+  the class itself as the Tiny key instead of adding an extra interface-plus-key
+  layer just to resolve it.
 - Avoid hidden DI behavior or implicit dependency discovery.
 - Keep DI setup separate from business logic.
 

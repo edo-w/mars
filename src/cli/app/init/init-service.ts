@@ -1,6 +1,6 @@
-import { getLogger } from '@logtape/logtape';
 import { CONFIG_FILE, createDefaultMarsConfig, MarsConfig } from '#src/cli/app/config/config-shapes';
 import type { Vfs } from '#src/lib/vfs';
+import { vlogManager } from '#src/lib/vlogger';
 
 export class InitService {
 	vfs: Vfs;
@@ -10,7 +10,7 @@ export class InitService {
 	}
 
 	async init(): Promise<void> {
-		const logger = getLogger(['mars', 'init']);
+		const logger = vlogManager.getLogger(['mars', 'init']);
 		let config = createDefaultMarsConfig();
 
 		if (await this.vfs.fileExists(CONFIG_FILE)) {

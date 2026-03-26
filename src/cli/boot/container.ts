@@ -18,6 +18,7 @@ import { ISecretsService } from '#src/cli/app/secrets/secrets-service';
 import { SshCaService } from '#src/cli/app/ssh-ca/ssh-ca-service';
 import { StateService } from '#src/cli/app/state/state-service';
 import { SshKeygen } from '#src/lib/ssh';
+import { Tui } from '#src/lib/tui';
 import { Vfs } from '#src/lib/vfs';
 
 export interface CreateContainerOptions {
@@ -94,6 +95,7 @@ export function createContainer(options: CreateContainerOptions): Tiny {
 
 		return keyAgentSecretsService;
 	});
+	container.addSingletonClass(Tui, []);
 	container.addScopedFactory(SecretsBootstrapperFactory, (t) => {
 		return new SecretsBootstrapperFactory(t);
 	});

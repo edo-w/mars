@@ -1,5 +1,4 @@
 import fsp from 'node:fs/promises';
-import { getLogger, type Logger } from '@logtape/logtape';
 import type { KeyAgentService } from '#src/cli/app/key-agent/key-agent-service';
 import {
 	createKeyAgentState,
@@ -17,13 +16,15 @@ import { JsonRpcServer } from '#src/lib/json-rpc-server';
 import type { JsonRpcServerErrorEvent, JsonRpcServerMessageEvent, RequestMessage } from '#src/lib/json-rpc-shapes';
 import { PromiseSignal } from '#src/lib/promise-signal';
 import { isMissingPathError } from '#src/lib/vfs';
+import type { VLogger } from '#src/lib/vlogger';
+import { vlogManager } from '#src/lib/vlogger';
 
 export class KeyAgentServer {
 	closeSignal: PromiseSignal | null;
 	idleTimer: NodeJS.Timeout | null;
 	jsonRpcServer: JsonRpcServer | null;
 	keyAgentService: KeyAgentService;
-	logger: Logger;
+	logger: VLogger;
 	stateService: StateService;
 
 	constructor(stateService: StateService, keyAgentService: KeyAgentService) {
@@ -31,7 +32,7 @@ export class KeyAgentServer {
 		this.idleTimer = null;
 		this.jsonRpcServer = null;
 		this.keyAgentService = keyAgentService;
-		this.logger = getLogger(['mars', 'key-agent', 'server']);
+		this.logger = vlogManager.getLogger(['mars', 'key-agent', 'server']);
 		this.stateService = stateService;
 	}
 

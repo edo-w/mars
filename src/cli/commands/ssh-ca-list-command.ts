@@ -1,9 +1,9 @@
 import type { Tiny } from '@edo-w/tiny';
-import { getLogger } from '@logtape/logtape';
 import { Command } from 'commander';
 import * as z from 'zod';
 import { EnvironmentService } from '#src/cli/app/environment/environment-service';
 import { SshCaService } from '#src/cli/app/ssh-ca/ssh-ca-service';
+import { vlogManager } from '#src/lib/vlogger';
 
 export class SshCaListCommandInput {
 	static schema = z.object({
@@ -37,7 +37,7 @@ export function createSshCaListCommand(container: Tiny): Command {
 }
 
 export async function handleSshCaListCommand(fields: unknown, container: Tiny): Promise<void> {
-	const logger = getLogger(['mars', 'ssh', 'ca', 'list']);
+	const logger = vlogManager.getLogger(['mars', 'ssh', 'ca', 'list']);
 	let input: SshCaListCommandInput;
 
 	try {

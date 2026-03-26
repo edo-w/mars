@@ -1,11 +1,11 @@
 import type { Tiny } from '@edo-w/tiny';
-import { getLogger } from '@logtape/logtape';
 import { Command } from 'commander';
-import Enquirer from 'enquirer';
 import * as z from 'zod';
 import { EnvironmentService } from '#src/cli/app/environment/environment-service';
 import { SshCaService } from '#src/cli/app/ssh-ca/ssh-ca-service';
 import { DEFAULT_SSH_CA_NAME } from '#src/cli/app/ssh-ca/ssh-ca-shapes';
+import { Tui } from '#src/lib/tui';
+import { vlogManager } from '#src/lib/vlogger';
 
 export class SshCaCreateCommandInput {
 	static schema = z.object({
@@ -44,7 +44,7 @@ export function createSshCaCreateCommand(container: Tiny): Command {
 }
 
 export async function handleSshCaCreateCommand(fields: unknown, container: Tiny): Promise<void> {
-	const logger = getLogger(['mars', 'ssh', 'ca', 'create']);
+	const logger = vlogManager.getLogger(['mars', 'ssh', 'ca', 'create']);
 	let input: SshCaCreateCommandInput;
 
 	try {
@@ -67,7 +67,8 @@ export async function handleSshCaCreateCommand(fields: unknown, container: Tiny)
 		return;
 	}
 
-	const passphrase = await promptForPassphrase();
+	const tui = container.get(Tui);
+	const passphrase = await tui.password('enter ssh ca passphrase');
 
 	if (passphrase === null || passphrase.length === 0) {
 		logger.error('invalid ssh ca passphrase');
@@ -87,19 +88,5 @@ export async function handleSshCaCreateCommand(fields: unknown, container: Tiny)
 		case 'created': {
 			logger.info(`created ssh ca "${result.ssh_ca.name}"`);
 		}
-	}
-}
-
-async function promptForPassphrase(): Promise<string | null> {
-	try {
-		const result = await Enquirer.prompt<{ passphrase: string }>({
-			message: 'enter ssh ca passphrase',
-			name: 'passphrase',
-			type: 'password',
-		});
-
-		return result.passphrase;
-	} catch {
-		return null;
 	}
 }

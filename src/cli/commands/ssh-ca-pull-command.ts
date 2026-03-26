@@ -1,10 +1,10 @@
 import type { Tiny } from '@edo-w/tiny';
-import { getLogger } from '@logtape/logtape';
 import { Command } from 'commander';
 import * as z from 'zod';
 import { EnvironmentService } from '#src/cli/app/environment/environment-service';
 import { SshCaService } from '#src/cli/app/ssh-ca/ssh-ca-service';
 import { DEFAULT_SSH_CA_NAME } from '#src/cli/app/ssh-ca/ssh-ca-shapes';
+import { vlogManager } from '#src/lib/vlogger';
 
 export class SshCaPullCommandInput {
 	static schema = z.object({
@@ -43,7 +43,7 @@ export function createSshCaPullCommand(container: Tiny): Command {
 }
 
 export async function handleSshCaPullCommand(fields: unknown, container: Tiny): Promise<void> {
-	const logger = getLogger(['mars', 'ssh', 'ca', 'pull']);
+	const logger = vlogManager.getLogger(['mars', 'ssh', 'ca', 'pull']);
 	let input: SshCaPullCommandInput;
 
 	try {
