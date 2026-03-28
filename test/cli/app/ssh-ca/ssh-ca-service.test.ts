@@ -13,6 +13,8 @@ import { stringify } from 'yaml';
 import { BackendFactory } from '#src/cli/app/backend/backend-factory';
 import { ConfigService } from '#src/cli/app/config/config-service';
 import { EnvironmentService } from '#src/cli/app/environment/environment-service';
+import { ISecretsService } from '#src/cli/app/secrets/secrets-service';
+import { EncryptedSecretRecord } from '#src/cli/app/secrets/secrets-shapes';
 import { SshCaService } from '#src/cli/app/ssh-ca/ssh-ca-service';
 import { StateService } from '#src/cli/app/state/state-service';
 import { SshKeygen } from '#src/lib/ssh';
@@ -27,10 +29,12 @@ function sut() {
 		region: 'us-east-1',
 	});
 	const sshKeygen = new MockSshKeygen(vfs);
+	const secretsService = new MockSecretsService();
 	const t = new Tiny();
 
 	t.addInstance(Vfs, vfs as Vfs);
 	t.addInstance(SshKeygen, sshKeygen as SshKeygen);
+	t.addInstance(ISecretsService, secretsService as never);
 	t.addSingletonClass(ConfigService, [Vfs]);
 	t.addScopedClass(StateService, [Vfs, ConfigService]);
 	t.addScopedFactory(S3Client, () => {
@@ -46,9 +50,10 @@ function sut() {
 
 	const configService = t.get(ConfigService);
 	const backendFactory = new BackendFactory(t);
-	const service = new SshCaService(vfs, configService, backendFactory, sshKeygen as SshKeygen);
+	const service = new SshCaService(vfs, configService, backendFactory, secretsService, sshKeygen as SshKeygen);
 
 	return {
+		secretsService,
 		service,
 		s3Client,
 		sshKeygen,
@@ -149,7 +154,7 @@ test('SshCaService treats an existing local keypair as already existing', async 
 
 	const environmentService = t.get(EnvironmentService);
 	const environment = await environmentService.get('gl-dev');
-	const result = environment === null ? null : await service.create(environment, 'default', 'secret');
+	const result = environment === null ? null : await service.create(environment, 'default');
 	const commandCount = send.mock.calls.length;
 
 	assert.deepEqual(result, {
@@ -159,8 +164,8 @@ test('SshCaService treats an existing local keypair as already existing', async 
 	assert.equal(commandCount, 0);
 });
 
-test('SshCaService creates an ssh ca and uploads both files through the backend', async () => {
-	const { service, s3Client, sshKeygen, t, vfs } = sut();
+test('SshCaService creates an ssh ca and uploads the keypair and password through the backend', async () => {
+	const { service, s3Client, secretsService, sshKeygen, t, vfs } = sut();
 	const send = vi.spyOn(s3Client, 'send');
 	const createDate = new Date('2026-03-22T12:00:00.000Z');
 	const marsConfig = toMarsConfigText();
@@ -201,6 +206,19 @@ test('SshCaService creates an ssh ca and uploads both files through the backend'
 							name: 'NotFound',
 						});
 			}
+
+			if (command.input.Key === 'mars/env/gl-dev/ssh/ca/default_ca_password.enc') {
+				return send.mock.calls.filter(([call]) => call instanceof PutObjectCommand).length > 0
+					? {
+							LastModified: createDate,
+						}
+					: Promise.reject({
+							$metadata: {
+								httpStatusCode: 404,
+							},
+							name: 'NotFound',
+						});
+			}
 		}
 
 		return {};
@@ -210,16 +228,20 @@ test('SshCaService creates an ssh ca and uploads both files through the backend'
 
 	const environmentService = t.get(EnvironmentService);
 	const environment = await environmentService.get('gl-dev');
-	const result = environment === null ? null : await service.create(environment, 'default', 'secret');
+	const result = environment === null ? null : await service.create(environment, 'default');
 	const privateKey = vfs.files.get('/repo/.mars/env/gl-dev/ssh/ca/default_ca_ed25519.key');
 	const publicKey = vfs.files.get('/repo/.mars/env/gl-dev/ssh/ca/default_ca_ed25519.pub');
+	const password = findPutObjectBody(send, 'mars/env/gl-dev/ssh/ca/default_ca_password.enc');
 	const putCommands = send.mock.calls.filter(([command]) => command instanceof PutObjectCommand);
 
 	assert.equal(result?.kind, 'created');
 	assert.equal(result?.ssh_ca.name, 'default');
 	assert.equal(privateKey, 'GENERATED PRIVATE KEY');
 	assert.equal(publicKey, 'GENERATED PUBLIC KEY');
-	assert.equal(putCommands.length, 2);
+	assert.equal(putCommands.length, 3);
+	assert.notEqual(sshKeygen.lastPassphrase, null);
+	assert.equal(secretsService.encryptBytesCalls.length, 1);
+	assert.equal(password, JSON.stringify(secretsService.lastEncryptedSecret));
 });
 
 test('SshCaService stores durable ssh ca files in the local backend when configured', async () => {
@@ -243,13 +265,15 @@ test('SshCaService stores durable ssh ca files in the local backend when configu
 
 	const environmentService = t.get(EnvironmentService);
 	const environment = await environmentService.get('gl-dev');
-	const result = environment === null ? null : await service.create(environment, 'default', 'secret');
+	const result = environment === null ? null : await service.create(environment, 'default');
 	const backendPrivateKey = vfs.files.get('/repo/.mars/local/env/gl-dev/ssh/ca/default_ca_ed25519.key');
 	const backendPublicKey = vfs.files.get('/repo/.mars/local/env/gl-dev/ssh/ca/default_ca_ed25519.pub');
+	const backendPassword = vfs.files.get('/repo/.mars/local/env/gl-dev/ssh/ca/default_ca_password.enc');
 
 	assert.equal(result?.kind, 'created');
 	assert.equal(backendPrivateKey, 'GENERATED PRIVATE KEY');
 	assert.equal(backendPublicKey, 'GENERATED PUBLIC KEY');
+	assert.notEqual(backendPassword, undefined);
 });
 
 test('SshCaService returns corrupted when pull is missing backend files', async () => {
@@ -266,6 +290,12 @@ test('SshCaService returns corrupted when pull is missing backend files', async 
 	send.mockImplementation(async (command) => {
 		if (command instanceof HeadObjectCommand) {
 			if (command.input.Key === 'mars/env/gl-dev/ssh/ca/default_ca_ed25519.pub') {
+				return {
+					LastModified: new Date('2026-03-22T12:00:00.000Z'),
+				};
+			}
+
+			if (command.input.Key === 'mars/env/gl-dev/ssh/ca/default_ca_password.enc') {
 				return {
 					LastModified: new Date('2026-03-22T12:00:00.000Z'),
 				};
@@ -291,6 +321,49 @@ test('SshCaService returns corrupted when pull is missing backend files', async 
 	assert.deepEqual(result, {
 		kind: 'corrupted',
 		missing_files: ['env/gl-dev/ssh/ca/default_ca_ed25519.key'],
+		name: 'default',
+	});
+});
+
+test('SshCaService returns corrupted when pull is missing the password object', async () => {
+	const { service, s3Client, t, vfs } = sut();
+	const send = vi.spyOn(s3Client, 'send');
+	const marsConfig = toMarsConfigText();
+	const environmentFile = stringify({
+		name: 'dev',
+		namespace: 'gl',
+		aws_account_id: '10000',
+		aws_region: 'us-east-1',
+	});
+
+	send.mockImplementation(async (command) => {
+		if (command instanceof HeadObjectCommand) {
+			if (command.input.Key === 'mars/env/gl-dev/ssh/ca/default_ca_password.enc') {
+				throw {
+					$metadata: {
+						httpStatusCode: 404,
+					},
+					name: 'NotFound',
+				};
+			}
+
+			return {
+				LastModified: new Date('2026-03-22T12:00:00.000Z'),
+			};
+		}
+
+		return {};
+	});
+	vfs.setTextFile('mars.config.json', marsConfig);
+	vfs.setTextFile('infra/envs/dev/environment.yml', environmentFile);
+
+	const environmentService = t.get(EnvironmentService);
+	const environment = await environmentService.get('gl-dev');
+	const result = environment === null ? null : await service.pull(environment, 'default');
+
+	assert.deepEqual(result, {
+		kind: 'corrupted',
+		missing_files: ['env/gl-dev/ssh/ca/default_ca_password.enc'],
 		name: 'default',
 	});
 });
@@ -409,6 +482,9 @@ test('SshCaService describes destroy resources from the backend and local cache'
 			label: 'backend file "s3://gl-dev-infra-10000/mars/env/gl-dev/ssh/ca/default_ca_ed25519.pub"',
 		},
 		{
+			label: 'backend file "s3://gl-dev-infra-10000/mars/env/gl-dev/ssh/ca/default_ca_password.enc"',
+		},
+		{
 			label: 'local file ".mars/env/gl-dev/ssh/ca/default_ca_ed25519.key"',
 		},
 	]);
@@ -479,7 +555,7 @@ test('SshCaService destroys ssh ca files from the backend and local cache', asyn
 	const publicKey = vfs.files.get('/repo/.mars/env/gl-dev/ssh/ca/default_ca_ed25519.pub');
 
 	assert.equal(result?.kind, 'destroyed');
-	assert.equal(deleteCommands.length, 2);
+	assert.equal(deleteCommands.length, 3);
 	assert.equal(privateKey, undefined);
 	assert.equal(publicKey, undefined);
 });
@@ -516,4 +592,70 @@ function createObjectBody(contents: string) {
 			return contents;
 		},
 	};
+}
+
+function findPutObjectBody(
+	send: {
+		mock: {
+			calls: Array<[unknown, ...unknown[]]>;
+		};
+	},
+	key: string,
+): string | null {
+	for (const [command] of send.mock.calls) {
+		if (!(command instanceof PutObjectCommand)) {
+			continue;
+		}
+
+		if (command.input.Key !== key) {
+			continue;
+		}
+
+		const body = command.input.Body;
+
+		if (!(body instanceof Uint8Array)) {
+			return null;
+		}
+
+		return new TextDecoder().decode(body);
+	}
+
+	return null;
+}
+
+class MockSecretsService {
+	encryptBytesCalls: Uint8Array[];
+	lastEncryptedSecret: EncryptedSecretRecord | null;
+
+	constructor() {
+		this.encryptBytesCalls = [];
+		this.lastEncryptedSecret = null;
+	}
+
+	async decryptBytes(): Promise<Uint8Array> {
+		return new Uint8Array();
+	}
+
+	async decryptText(): Promise<string> {
+		return '';
+	}
+
+	async encryptBytes(_environment: unknown, plaintext: Uint8Array): Promise<EncryptedSecretRecord> {
+		this.encryptBytesCalls.push(plaintext);
+		this.lastEncryptedSecret = new EncryptedSecretRecord({
+			algorithm: 'AES-GCM',
+			ciphertext: Buffer.from(plaintext).toString('base64'),
+			iv: 'aXY=',
+		});
+
+		return this.lastEncryptedSecret;
+	}
+
+	async encryptText(): Promise<EncryptedSecretRecord> {
+		return new EncryptedSecretRecord({
+			algorithm: 'AES-GCM',
+			ciphertext: '',
+			iv: 'aXY=',
+		});
+	}
 }

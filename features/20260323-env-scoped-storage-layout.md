@@ -77,7 +77,7 @@ This refactor affects all existing SSH CA commands:
 - `mars ssh ca show [name]`
 - `mars ssh ca create [name]`
 - `mars ssh ca pull [name]`
-- `mars ssh ca remove <name>`
+- `mars ssh ca clear <name>`
 - `mars ssh ca destroy <name>`
 
 ## Behavioral Expectations
@@ -107,10 +107,10 @@ This refactor affects all existing SSH CA commands:
 - pull into the new environment-scoped local path
 - only check for files in the resolved environment's S3 prefix
 
-### `mars ssh ca remove <name>`
+### `mars ssh ca clear <name>`
 
-- remove only the local cached files for the resolved environment
-- it must not remove another environment's local SSH CA files
+- clear only the local cached files for the resolved environment
+- it must not clear another environment's local SSH CA files
 
 ### `mars ssh ca destroy <name>`
 
@@ -170,7 +170,7 @@ environment is already resolved.
   local and S3 paths
 - `mars ssh ca pull [name]` reads from the resolved environment's S3 prefix and
   writes to the resolved environment's local path
-- `mars ssh ca remove <name>` only removes local cache files for the resolved
+- `mars ssh ca clear <name>` only clears local cache files for the resolved
   environment
 - `mars ssh ca destroy <name>` only removes local and S3 files for the
   resolved environment

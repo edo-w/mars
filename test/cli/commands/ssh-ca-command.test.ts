@@ -8,5 +8,5 @@ test('createSshCaCommand builds the ssh ca subcommands', () => {
 	const subcommands = command.commands.map((entry) => entry.name());
 
 	assert.equal(command.name(), 'ca');
-	assert.deepEqual(subcommands, ['list', 'show', 'create', 'destroy', 'pull', 'remove']);
+	assert.deepEqual(subcommands, ['list', 'show', 'create', 'destroy', 'pull', 'clear']);
 });

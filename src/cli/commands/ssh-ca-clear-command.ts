@@ -5,7 +5,7 @@ import { EnvironmentService } from '#src/cli/app/environment/environment-service
 import { SshCaService } from '#src/cli/app/ssh-ca/ssh-ca-service';
 import { vlogManager } from '#src/lib/vlogger';
 
-export class SshCaRemoveCommandInput {
+export class SshCaClearCommandInput {
 	static schema = z.object({
 		env: z.string().min(1).nullable(),
 		name: z.string().min(1),
@@ -15,18 +15,17 @@ export class SshCaRemoveCommandInput {
 	name: string;
 
 	constructor(fields: unknown) {
-		const parsed = SshCaRemoveCommandInput.schema.parse(fields);
+		const parsed = SshCaClearCommandInput.schema.parse(fields);
 
 		this.env = parsed.env;
 		this.name = parsed.name;
 	}
 }
 
-export function createSshCaRemoveCommand(container: Tiny): Command {
-	const command = new Command('remove');
+export function createSshCaClearCommand(container: Tiny): Command {
+	const command = new Command('clear');
 
-	command.alias('rm');
-	command.description('Remove a local SSH certificate authority.');
+	command.description('Clear a local SSH certificate authority.');
 	command.argument('<name>');
 	command.option('--env <env>');
 	command.action(async (name, options) => {
@@ -36,18 +35,18 @@ export function createSshCaRemoveCommand(container: Tiny): Command {
 		};
 		const scope = container.createScope();
 
-		await handleSshCaRemoveCommand(fields, scope);
+		await handleSshCaClearCommand(fields, scope);
 	});
 
 	return command;
 }
 
-export async function handleSshCaRemoveCommand(fields: unknown, container: Tiny): Promise<void> {
-	const logger = vlogManager.getLogger(['mars', 'ssh', 'ca', 'remove']);
-	let input: SshCaRemoveCommandInput;
+export async function handleSshCaClearCommand(fields: unknown, container: Tiny): Promise<void> {
+	const logger = vlogManager.getLogger(['mars', 'ssh', 'ca', 'clear']);
+	let input: SshCaClearCommandInput;
 
 	try {
-		input = new SshCaRemoveCommandInput(fields);
+		input = new SshCaClearCommandInput(fields);
 	} catch {
 		logger.error('invalid ssh ca name');
 		return;
@@ -67,9 +66,9 @@ export async function handleSshCaRemoveCommand(fields: unknown, container: Tiny)
 	}
 
 	const sshCaService = container.get(SshCaService);
-	const removed = await sshCaService.remove(environment, input.name);
+	const cleared = await sshCaService.remove(environment, input.name);
 
-	if (removed) {
-		logger.info(`removed local ssh ca "${input.name}"`);
+	if (cleared) {
+		logger.info(`cleared local ssh ca "${input.name}"`);
 	}
 }

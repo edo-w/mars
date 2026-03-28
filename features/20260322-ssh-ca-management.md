@@ -4,7 +4,7 @@
 
 Add SSH certificate authority management under `mars ssh ca`.
 
-This feature lets operators create, list, inspect, pull, remove, and destroy
+This feature lets operators create, list, inspect, pull, clear, and destroy
 SSH certificate authority keypairs for a resolved Mars environment.
 
 Each environment has its own isolated SSH CA material stored in that
@@ -46,13 +46,13 @@ Subcommands:
 - `mars ssh ca create [name]`
 - `mars ssh ca destroy <name>`
 - `mars ssh ca pull [name]`
-- `mars ssh ca rm <name>`
+- `mars ssh ca clear <name>`
 
 ## Naming
 
 - SSH CA name defaults to `default` when the command accepts an optional name
   and no name is passed
-- `destroy` and `rm` require an explicit name
+- `destroy` and `clear` require an explicit name
 - the CA key filenames use the CA name directly
 
 Examples:
@@ -75,7 +75,7 @@ Commands:
 - `mars ssh ca show [name]`
 - `mars ssh ca create [name]`
 - `mars ssh ca pull [name]`
-- `mars ssh ca rm <name>`
+- `mars ssh ca clear <name>`
 - `mars ssh ca destroy <name>`
 
 Resolution order:
@@ -216,15 +216,15 @@ Behavior:
 - after that message, Mars must list the missing files
 - operators are expected to restore the missing files manually outside Mars
 
-### `mars ssh ca rm <name>`
+### `mars ssh ca clear <name>`
 
-Remove a local SSH CA copy from the Mars work directory.
+Clear a local SSH CA copy from the Mars work directory.
 
 Rules:
 
 - `name` is required
-- remove the local private key if present
-- remove the local public key if present
+- clear the local private key if present
+- clear the local public key if present
 - if neither file exists locally, exit successfully without output
 
 ## Destroy Confirmation
@@ -273,7 +273,7 @@ For a configured `work_path` and CA name `{name}`:
 
 ## Future Passphrase Note
 
-This feature only creates, stores, pulls, and removes SSH CA key material.
+This feature only creates, stores, pulls, and clears SSH CA key material.
 
 Future certificate issuance will use:
 
@@ -304,7 +304,7 @@ Suggested responsibilities:
 - list SSH CAs from S3
 - inspect SSH CA metadata from S3
 - pull SSH CA files into `work_path`
-- remove local cached SSH CA files
+- clear local cached SSH CA files
 - destroy SSH CA files from S3 and local cache
 
 ### Command Wiring
@@ -350,7 +350,7 @@ Use `ssh-keygen` and set the key comment to:
 - implement passphrase prompt and local key generation for `create`
 - implement S3 upload for `create`
 - implement S3 download for `pull`
-- implement local-only deletion for `rm`
+- implement local-only cache clearing for `clear`
 - implement interactive confirmation and S3 plus local deletion for `destroy`
 
 ## Acceptance Criteria
@@ -380,8 +380,8 @@ Use `ssh-keygen` and set the key comment to:
   more expected objects are missing
 - `mars ssh ca pull [name]` lists the missing S3 files when corruption is
   detected
-- `mars ssh ca rm <name>` removes the local cached files when present
-- `mars ssh ca rm <name>` exits successfully when the local files do not exist
+- `mars ssh ca clear <name>` clears the local cached files when present
+- `mars ssh ca clear <name>` exits successfully when the local files do not exist
 - `mars ssh ca destroy <name>` requires interactive confirmation
 - `mars ssh ca destroy <name>` requires the exact SSH CA name as confirmation
 - `mars ssh ca destroy <name>` deletes the S3 objects and local cached files

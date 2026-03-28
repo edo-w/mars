@@ -71,7 +71,7 @@ test('createProgram builds the Mars CLI command tree', () => {
 							{ children: [], name: 'create' },
 							{ children: [], name: 'destroy' },
 							{ children: [], name: 'pull' },
-							{ children: [], name: 'remove' },
+							{ children: [], name: 'clear' },
 						],
 						name: 'ca',
 					},

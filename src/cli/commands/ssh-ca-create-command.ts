@@ -4,7 +4,6 @@ import * as z from 'zod';
 import { EnvironmentService } from '#src/cli/app/environment/environment-service';
 import { SshCaService } from '#src/cli/app/ssh-ca/ssh-ca-service';
 import { DEFAULT_SSH_CA_NAME } from '#src/cli/app/ssh-ca/ssh-ca-shapes';
-import { Tui } from '#src/lib/tui';
 import { vlogManager } from '#src/lib/vlogger';
 
 export class SshCaCreateCommandInput {
@@ -67,17 +66,9 @@ export async function handleSshCaCreateCommand(fields: unknown, container: Tiny)
 		return;
 	}
 
-	const tui = container.get(Tui);
-	const passphrase = await tui.password('enter ssh ca passphrase');
-
-	if (passphrase === null || passphrase.length === 0) {
-		logger.error('invalid ssh ca passphrase');
-		return;
-	}
-
 	const name = input.name ?? DEFAULT_SSH_CA_NAME;
 	const sshCaService = container.get(SshCaService);
-	const result = await sshCaService.create(environment, name, passphrase);
+	const result = await sshCaService.create(environment, name);
 
 	switch (result.kind) {
 		case 'already_exists': {

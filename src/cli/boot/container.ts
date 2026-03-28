@@ -127,9 +127,10 @@ export function createContainer(options: CreateContainerOptions): Tiny {
 		const vfs = t.get(Vfs);
 		const configService = t.get(ConfigService);
 		const backendFactory = t.get(BackendFactory);
+		const secretsService = t.get(ISecretsService);
 		const sshKeygen = t.get(SshKeygen);
 
-		return new SshCaService(vfs, configService, backendFactory, sshKeygen);
+		return new SshCaService(vfs, configService, backendFactory, secretsService, sshKeygen);
 	});
 
 	return container;

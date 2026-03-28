@@ -2,6 +2,7 @@ import path from 'node:path';
 import type { BackendFactory } from '#src/cli/app/backend/backend-factory';
 import type { ConfigService } from '#src/cli/app/config/config-service';
 import type { Environment } from '#src/cli/app/environment/environment-shapes';
+import type { SecretsService } from '#src/cli/app/secrets/secrets-service';
 import type {
 	CreateSshCaResult,
 	DestroySshCaResult,
@@ -11,10 +12,12 @@ import type {
 } from '#src/cli/app/ssh-ca/ssh-ca-shapes';
 import {
 	createSshCaDirectoryBackendPath,
+	createSshCaPasswordBackendPath,
 	createSshCaPrivateKeyBackendPath,
 	createSshCaPrivateKeyWorkPath,
 	createSshCaPublicKeyBackendPath,
 	createSshCaPublicKeyWorkPath,
+	SSH_CA_PASSWORD_SUFFIX,
 	SSH_CA_PRIVATE_KEY_SUFFIX,
 	SSH_CA_PUBLIC_KEY_SUFFIX,
 } from '#src/cli/app/ssh-ca/ssh-ca-shapes';
@@ -24,12 +27,20 @@ import type { Vfs } from '#src/lib/vfs';
 export class SshCaService {
 	backendFactory: BackendFactory;
 	configService: ConfigService;
+	secretsService: SecretsService;
 	sshKeygen: SshKeygen;
 	vfs: Vfs;
 
-	constructor(vfs: Vfs, configService: ConfigService, backendFactory: BackendFactory, sshKeygen: SshKeygen) {
+	constructor(
+		vfs: Vfs,
+		configService: ConfigService,
+		backendFactory: BackendFactory,
+		secretsService: SecretsService,
+		sshKeygen: SshKeygen,
+	) {
 		this.backendFactory = backendFactory;
 		this.configService = configService;
+		this.secretsService = secretsService;
 		this.sshKeygen = sshKeygen;
 		this.vfs = vfs;
 	}
@@ -56,14 +67,17 @@ export class SshCaService {
 	async show(environment: Environment, name: string): Promise<SshCa | null> {
 		const backendService = await this.backendFactory.create();
 		const privateKeyPath = createSshCaPrivateKeyBackendPath(environment.id, name);
+		const passwordPath = createSshCaPasswordBackendPath(environment.id, name);
 		const publicKeyPath = createSshCaPublicKeyBackendPath(environment.id, name);
 		const privateKeyExists = await backendService.fileExists(environment, privateKeyPath);
+		const passwordExists = await backendService.fileExists(environment, passwordPath);
 		const publicKeyExists = await backendService.fileExists(environment, publicKeyPath);
-		const createDate = await backendService.getLastModifiedDate(environment, privateKeyPath);
 
-		if (!privateKeyExists || !publicKeyExists) {
+		if (!privateKeyExists || !publicKeyExists || !passwordExists) {
 			return null;
 		}
+
+		const createDate = await backendService.getLastModifiedDate(environment, privateKeyPath);
 
 		return {
 			create_date: createDate ?? new Date(0),
@@ -73,9 +87,18 @@ export class SshCaService {
 		};
 	}
 
-	async create(environment: Environment, name: string, passphrase: string): Promise<CreateSshCaResult> {
+	async create(environment: Environment, name: string): Promise<CreateSshCaResult> {
 		const backendService = await this.backendFactory.create();
 		const localPaths = await this.getLocalPaths(environment.id, name);
+		const password = this.generatePassword();
+		const encryptedPassword = await this.secretsService.encryptBytes(
+			environment,
+			new TextEncoder().encode(password),
+		);
+		const passwordContents = JSON.stringify(encryptedPassword);
+		const privateKeyPath = createSshCaPrivateKeyBackendPath(environment.id, name);
+		const publicKeyPath = createSshCaPublicKeyBackendPath(environment.id, name);
+		const passwordPath = createSshCaPasswordBackendPath(environment.id, name);
 
 		if (
 			(await this.vfs.fileExists(localPaths.privateKeyPath)) ||
@@ -88,8 +111,9 @@ export class SshCaService {
 		}
 
 		if (
-			(await backendService.fileExists(environment, createSshCaPrivateKeyBackendPath(environment.id, name))) ||
-			(await backendService.fileExists(environment, createSshCaPublicKeyBackendPath(environment.id, name)))
+			(await backendService.fileExists(environment, privateKeyPath)) ||
+			(await backendService.fileExists(environment, publicKeyPath)) ||
+			(await backendService.fileExists(environment, passwordPath))
 		) {
 			return {
 				kind: 'already_exists',
@@ -105,7 +129,7 @@ export class SshCaService {
 		await this.vfs.ensureDirectory(localDirectoryPath);
 		await this.sshKeygen.generateKeyPair({
 			comment,
-			passphrase,
+			passphrase: password,
 			privateKeyPath: generatedPrivateKeyPath,
 		});
 
@@ -122,16 +146,9 @@ export class SshCaService {
 			await this.vfs.removeFile(generatedPaths.publicKeyPath);
 		}
 
-		await backendService.writeTextFile(
-			environment,
-			createSshCaPrivateKeyBackendPath(environment.id, name),
-			privateKeyContents,
-		);
-		await backendService.writeTextFile(
-			environment,
-			createSshCaPublicKeyBackendPath(environment.id, name),
-			publicKeyContents,
-		);
+		await backendService.writeTextFile(environment, privateKeyPath, privateKeyContents);
+		await backendService.writeTextFile(environment, publicKeyPath, publicKeyContents);
+		await backendService.writeTextFile(environment, passwordPath, passwordContents);
 
 		const sshCa = await this.show(environment, name);
 
@@ -148,21 +165,26 @@ export class SshCaService {
 	async pull(environment: Environment, name: string): Promise<PullSshCaResult> {
 		const backendService = await this.backendFactory.create();
 		const privateKeyPath = createSshCaPrivateKeyBackendPath(environment.id, name);
+		const passwordPath = createSshCaPasswordBackendPath(environment.id, name);
 		const publicKeyPath = createSshCaPublicKeyBackendPath(environment.id, name);
 		const missingFiles: string[] = [];
 		const privateKeyExists = await backendService.fileExists(environment, privateKeyPath);
+		const passwordExists = await backendService.fileExists(environment, passwordPath);
 		const publicKeyExists = await backendService.fileExists(environment, publicKeyPath);
-		const createDate = await backendService.getLastModifiedDate(environment, privateKeyPath);
 
 		if (!privateKeyExists) {
 			missingFiles.push(privateKeyPath);
+		}
+
+		if (!passwordExists) {
+			missingFiles.push(passwordPath);
 		}
 
 		if (!publicKeyExists) {
 			missingFiles.push(publicKeyPath);
 		}
 
-		if (missingFiles.length === 2) {
+		if (missingFiles.length === 3) {
 			return {
 				kind: 'not_found',
 				name,
@@ -177,6 +199,7 @@ export class SshCaService {
 			};
 		}
 
+		const createDate = await backendService.getLastModifiedDate(environment, privateKeyPath);
 		const localPaths = await this.getLocalPaths(environment.id, name);
 		const localDirectoryPath = path.posix.dirname(localPaths.privateKeyPath);
 		const privateKeyContents = await backendService.readTextFile(environment, privateKeyPath);
@@ -215,6 +238,7 @@ export class SshCaService {
 	async describeDestroy(environment: Environment, name: string): Promise<SshCaResource[] | null> {
 		const backendService = await this.backendFactory.create();
 		const privateKeyPath = createSshCaPrivateKeyBackendPath(environment.id, name);
+		const passwordPath = createSshCaPasswordBackendPath(environment.id, name);
 		const publicKeyPath = createSshCaPublicKeyBackendPath(environment.id, name);
 		const localPaths = await this.getLocalPaths(environment.id, name);
 		const resources: SshCaResource[] = [];
@@ -228,6 +252,12 @@ export class SshCaService {
 		if (await backendService.fileExists(environment, publicKeyPath)) {
 			resources.push({
 				label: `backend file "${await backendService.getFilePath(environment, publicKeyPath)}"`,
+			});
+		}
+
+		if (await backendService.fileExists(environment, passwordPath)) {
+			resources.push({
+				label: `backend file "${await backendService.getFilePath(environment, passwordPath)}"`,
 			});
 		}
 
@@ -249,6 +279,7 @@ export class SshCaService {
 	async destroy(environment: Environment, name: string): Promise<DestroySshCaResult> {
 		const backendService = await this.backendFactory.create();
 		const privateKeyPath = createSshCaPrivateKeyBackendPath(environment.id, name);
+		const passwordPath = createSshCaPasswordBackendPath(environment.id, name);
 		const publicKeyPath = createSshCaPublicKeyBackendPath(environment.id, name);
 		const localPaths = await this.getLocalPaths(environment.id, name);
 		const resources = await this.describeDestroy(environment, name);
@@ -266,6 +297,10 @@ export class SshCaService {
 
 		if (await backendService.fileExists(environment, publicKeyPath)) {
 			await backendService.removeFile(environment, publicKeyPath);
+		}
+
+		if (await backendService.fileExists(environment, passwordPath)) {
+			await backendService.removeFile(environment, passwordPath);
 		}
 
 		if (await this.vfs.fileExists(localPaths.privateKeyPath)) {
@@ -306,6 +341,10 @@ export class SshCaService {
 	private parseSshCaName(objectKey: string): string | null {
 		const objectName = path.posix.basename(objectKey);
 
+		if (objectName.endsWith(SSH_CA_PASSWORD_SUFFIX)) {
+			return objectName.slice(0, -SSH_CA_PASSWORD_SUFFIX.length);
+		}
+
 		if (objectName.endsWith(SSH_CA_PRIVATE_KEY_SUFFIX)) {
 			return objectName.slice(0, -SSH_CA_PRIVATE_KEY_SUFFIX.length);
 		}
@@ -315,5 +354,11 @@ export class SshCaService {
 		}
 
 		return null;
+	}
+
+	private generatePassword(): string {
+		const bytes = crypto.getRandomValues(new Uint8Array(32));
+
+		return Buffer.from(bytes).toString('base64url');
 	}
 }

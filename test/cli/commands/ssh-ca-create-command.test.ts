@@ -5,12 +5,11 @@ import { EnvironmentService } from '#src/cli/app/environment/environment-service
 import { SshCaService } from '#src/cli/app/ssh-ca/ssh-ca-service';
 import { createSshCaCreateCommand, handleSshCaCreateCommand } from '#src/cli/commands/ssh-ca-create-command';
 import { runCommand } from '#test/helpers/command';
+import { createCommandContainer } from '#test/helpers/command-container';
 import { createEnvironment } from '#test/helpers/environment';
-import { useMockTui, withMockTui } from '#test/helpers/tui';
 import { useMockVLogger } from '#test/helpers/vlogger';
 
 const logger = useMockVLogger();
-const tui = useMockTui();
 
 test('createSshCaCreateCommand builds the create command', () => {
 	const command = createSshCaCreateCommand(new Tiny());
@@ -19,50 +18,51 @@ test('createSshCaCreateCommand builds the create command', () => {
 	assert.equal(command.description(), 'Create an SSH certificate authority.');
 });
 
-test('handleSshCaCreateCommand logs invalid passphrase input', async () => {
+test('handleSshCaCreateCommand creates the ssh ca through the service', async () => {
 	const environment = createEnvironment();
+	const create = vi.fn(async () => {
+		return {
+			kind: 'created' as const,
+			ssh_ca: {
+				create_date: new Date('2026-03-28T00:00:00.000Z'),
+				name: 'default',
+				private_key: 'backend://private',
+				public_key: 'backend://public',
+			},
+		};
+	});
 
-	tui.password.mockResolvedValue('');
-
-	const container = withMockTui(
+	const container = createCommandContainer([
 		[
-			[
-				EnvironmentService,
-				{
-					resolveEnvironment: vi.fn(async () => environment),
-				},
-			],
-			[
-				SshCaService,
-				{
-					create: vi.fn(),
-				},
-			],
+			EnvironmentService,
+			{
+				resolveEnvironment: vi.fn(async () => environment),
+			},
 		],
-		tui,
-	);
+		[
+			SshCaService,
+			{
+				create,
+			},
+		],
+	]);
 
 	await handleSshCaCreateCommand({ env: 'gl-dev', name: 'default' }, container);
 
-	assert.deepEqual(logger.error.mock.calls[0], ['invalid ssh ca passphrase']);
+	assert.deepEqual(create.mock.calls[0], [environment, 'default']);
+	assert.deepEqual(logger.info.mock.calls[0], ['created ssh ca "default"']);
 });
 
 test('createSshCaCreateCommand passes args through commander', async () => {
 	const resolveEnvironment = vi.fn(async () => null);
-
-	tui.password.mockResolvedValue('secret');
-
-	const container = withMockTui(
+	const container = createCommandContainer([
 		[
-			[
-				EnvironmentService,
-				{
-					resolveEnvironment,
-				},
-			],
+			EnvironmentService,
+			{
+				resolveEnvironment,
+			},
 		],
-		tui,
-	);
+	]);
 	const command = createSshCaCreateCommand(container);
 
 	await runCommand(command, ['default', '--env', 'gl-dev']);

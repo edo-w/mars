@@ -4,6 +4,7 @@ export const DEFAULT_SSH_CA_NAME = 'default';
 export const SSH_CA_DIRECTORY = 'ssh/ca';
 export const ENV_DIRECTORY = 'env';
 export const SSH_CA_PRIVATE_KEY_SUFFIX = '_ca_ed25519.key';
+export const SSH_CA_PASSWORD_SUFFIX = '_ca_password.enc';
 export const SSH_CA_PUBLIC_KEY_SUFFIX = '_ca_ed25519.pub';
 
 export interface SshCa {
@@ -67,6 +68,10 @@ export function createSshCaPublicKeyFileName(name: string): string {
 	return `${name}${SSH_CA_PUBLIC_KEY_SUFFIX}`;
 }
 
+export function createSshCaPasswordFileName(name: string): string {
+	return `${name}${SSH_CA_PASSWORD_SUFFIX}`;
+}
+
 export function createSshCaPrivateKeyWorkPath(workPath: string, env: string, name: string): string {
 	return path.posix.join(workPath, ENV_DIRECTORY, env, SSH_CA_DIRECTORY, createSshCaPrivateKeyFileName(name));
 }
@@ -85,4 +90,8 @@ export function createSshCaPrivateKeyBackendPath(env: string, name: string): str
 
 export function createSshCaPublicKeyBackendPath(env: string, name: string): string {
 	return path.posix.join(createSshCaDirectoryBackendPath(env), createSshCaPublicKeyFileName(name));
+}
+
+export function createSshCaPasswordBackendPath(env: string, name: string): string {
+	return path.posix.join(createSshCaDirectoryBackendPath(env), createSshCaPasswordFileName(name));
 }
