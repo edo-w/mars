@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
-import { isRequestMessage, isResponseMessage, MessageEnvelope } from '#src/lib/json-rpc-shapes';
+import { isRequestMessage, isResponseMessage, MessageEnvelope } from '#src/lib/json-rpc';
 
 test('MessageEnvelope constructs from valid input', () => {
 	const envelope = new MessageEnvelope({

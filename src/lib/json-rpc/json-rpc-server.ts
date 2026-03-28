@@ -4,9 +4,11 @@ import {
 	type JsonRpcServerErrorEvent,
 	type JsonRpcServerMessageEvent,
 	MessageEnvelope,
-} from '#src/lib/json-rpc-shapes';
+} from '#src/lib/json-rpc/json-rpc-shapes';
 import type { VLogger } from '#src/lib/vlogger';
 import { vlogManager } from '#src/lib/vlogger';
+
+const JSON_RPC_SOCKET_CLOSE_GRACE_MS = 100;
 
 export class JsonRpcServer {
 	dataBuffers: Map<number, string>;
@@ -81,7 +83,15 @@ export class JsonRpcServer {
 
 	private closeSockets(): void {
 		for (const socket of this.sockets.values()) {
-			socket.destroy();
+			// Try a graceful close first so any in-flight response can flush to the
+			// client before shutdown. If the socket lingers, force close it so
+			// server.close() cannot hang waiting on a sticky connection.
+			socket.end();
+			setTimeout(() => {
+				if (!socket.destroyed) {
+					socket.destroy();
+				}
+			}, JSON_RPC_SOCKET_CLOSE_GRACE_MS);
 		}
 
 		this.socketIds.clear();
@@ -189,7 +199,7 @@ export class JsonRpcServer {
 
 		await new Promise<void>((resolve, reject) => {
 			socket.write(`${JSON.stringify(envelope)}\n`, (error) => {
-				if (error !== null) {
+				if (error !== undefined && error !== null) {
 					reject(error);
 					return;
 				}

@@ -86,7 +86,7 @@ test('KmsSecretsProvider stores wrapped data key material in the backend', async
 	}
 
 	const dataKey = await service.getDataKey(environment);
-	const dataKeyFile = vfs.files.get('/repo/.mars/local/envs/gl-dev/secrets/datakey.enc');
+	const dataKeyFile = vfs.files.get('/repo/.mars/local/env/gl-dev/secrets/datakey.enc');
 
 	assert.equal(dataKey.length, 32);
 	assert.equal(dataKeyFile, 'AQID');
@@ -121,7 +121,7 @@ test('KmsSecretsProvider decrypts an existing wrapped data key from the backend'
 	});
 	vfs.setTextFile('mars.config.json', marsConfig);
 	vfs.setTextFile('infra/envs/dev/environment.yml', environmentFile);
-	vfs.setTextFile('.mars/local/envs/gl-dev/secrets/datakey.enc', 'AQID');
+	vfs.setTextFile('.mars/local/env/gl-dev/secrets/datakey.enc', 'AQID');
 
 	const environmentService = t.get(EnvironmentService);
 	const environment = await environmentService.get('gl-dev');

@@ -1,10 +1,9 @@
 import net from 'node:net';
-import { MessageEnvelope } from '#src/lib/json-rpc-shapes';
+import { MessageEnvelope } from '#src/lib/json-rpc/json-rpc-shapes';
 import { PromiseSignal } from '#src/lib/promise-signal';
 import type { VLogger } from '#src/lib/vlogger';
 import { vlogManager } from '#src/lib/vlogger';
 
-const JSON_RPC_IDLE_TIMEOUT_MS = 30 * 1000;
 const JSON_RPC_REQUEST_TIMEOUT_MS = 5 * 1000;
 
 interface PendingRequest {
@@ -14,8 +13,9 @@ interface PendingRequest {
 }
 
 export class JsonRpcClient {
+	closeByClient: boolean;
 	dataBuffer: string;
-	idleTimer: NodeJS.Timeout | null;
+	keepAlive: boolean;
 	logger: VLogger;
 	nextId: number;
 	pending: Map<number, PendingRequest>;
@@ -24,8 +24,9 @@ export class JsonRpcClient {
 	socketPromise: Promise<net.Socket> | null;
 
 	constructor(socketPath: string) {
+		this.closeByClient = false;
 		this.dataBuffer = '';
-		this.idleTimer = null;
+		this.keepAlive = false;
 		this.logger = vlogManager.getLogger(['mars', 'json-rpc', 'client']);
 		this.nextId = 1;
 		this.pending = new Map();
@@ -35,7 +36,7 @@ export class JsonRpcClient {
 	}
 
 	async close(): Promise<void> {
-		this.clearIdleTimer();
+		this.closeByClient = true;
 		this.clearPending(new Error('json-rpc client closed'));
 
 		if (this.socket === null) {
@@ -74,26 +75,25 @@ export class JsonRpcClient {
 
 		this.nextId += 1;
 		this.pending.set(id, pendingRequest);
-		this.resetIdleTimer();
 		socket.write(`${JSON.stringify(envelope)}\n`);
-		await pendingRequest.signal.wait();
-		this.resetIdleTimer();
-		const response = pendingRequest.response;
+		try {
+			await pendingRequest.signal.wait();
+			const response = pendingRequest.response;
 
-		if (response === null) {
-			throw new Error('json-rpc response missing');
+			if (response === null) {
+				throw new Error('json-rpc response missing');
+			}
+
+			return response;
+		} finally {
+			if (!this.keepAlive) {
+				await this.close();
+			}
 		}
-
-		return response;
 	}
 
-	private clearIdleTimer(): void {
-		if (this.idleTimer === null) {
-			return;
-		}
-
-		clearTimeout(this.idleTimer);
-		this.idleTimer = null;
+	setKeepAlive(keepAlive: boolean): void {
+		this.keepAlive = keepAlive;
 	}
 
 	private clearPending(error: Error): void {
@@ -117,6 +117,7 @@ export class JsonRpcClient {
 			const socket = net.createConnection(this.socketPath);
 
 			socket.once('connect', () => {
+				this.closeByClient = false;
 				this.socket = socket;
 				this.socketPromise = null;
 				this.bindSocket(socket);
@@ -152,10 +153,17 @@ export class JsonRpcClient {
 	}
 
 	private handleSocketClose(): void {
+		const closeByClient = this.closeByClient;
+
 		this.socket = null;
 		this.socketPromise = null;
 		this.dataBuffer = '';
-		this.clearIdleTimer();
+		this.closeByClient = false;
+
+		if (closeByClient) {
+			return;
+		}
+
 		this.clearPending(new Error('json-rpc socket closed'));
 	}
 
@@ -197,12 +205,5 @@ export class JsonRpcClient {
 			pendingRequest.response = envelope.message;
 			pendingRequest.signal.resolve();
 		}
-	}
-
-	private resetIdleTimer(): void {
-		this.clearIdleTimer();
-		this.idleTimer = setTimeout(() => {
-			void this.close();
-		}, JSON_RPC_IDLE_TIMEOUT_MS);
 	}
 }

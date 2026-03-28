@@ -9,7 +9,7 @@ import {
 	type KeyAgentShutdownRequest,
 	KeyAgentShutdownResponse,
 } from '#src/cli/app/key-agent/key-agent-shapes';
-import { JsonRpcClient } from '#src/lib/json-rpc-client';
+import { JsonRpcClient } from '#src/lib/json-rpc';
 
 export class KeyAgentClient {
 	jsonRpcClient: JsonRpcClient;
@@ -20,6 +20,10 @@ export class KeyAgentClient {
 
 	async close(): Promise<void> {
 		await this.jsonRpcClient.close();
+	}
+
+	setKeepAlive(keepAlive: boolean): void {
+		this.jsonRpcClient.setKeepAlive(keepAlive);
 	}
 
 	async decrypt(request: KeyAgentDecryptRequest): Promise<KeyAgentDecryptResponse> {

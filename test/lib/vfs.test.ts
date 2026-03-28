@@ -51,6 +51,25 @@ test('Vfs writes and reads a text file', async () => {
 	}
 });
 
+test('Vfs writes and reads a binary file', async () => {
+	const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mars-vfs-'));
+	const vfs = new Vfs(tempDir);
+	const fileBytes = new Uint8Array([0, 1, 2, 3]);
+
+	try {
+		await vfs.writeFile('nested/file.bin', fileBytes);
+
+		const nextFileBytes = await vfs.readFile('nested/file.bin');
+
+		assert.deepEqual([...nextFileBytes], [0, 1, 2, 3]);
+	} finally {
+		await fsp.rm(tempDir, {
+			force: true,
+			recursive: true,
+		});
+	}
+});
+
 test('Vfs ensureDirectory and directoryExists work together', async () => {
 	const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mars-vfs-'));
 	const vfs = new Vfs(tempDir);
@@ -151,6 +170,28 @@ test('Vfs removeFile ignores missing files', async () => {
 		await vfs.removeFile('missing.txt');
 
 		assert.ok(true);
+	} finally {
+		await fsp.rm(tempDir, {
+			force: true,
+			recursive: true,
+		});
+	}
+});
+
+test('Vfs removeDirectory removes an existing directory tree', async () => {
+	const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mars-vfs-'));
+	const vfs = new Vfs(tempDir);
+
+	try {
+		await vfs.writeTextFile('nested/dir/file.txt', 'hello');
+
+		await vfs.removeDirectory('nested');
+
+		const hasDirectory = await vfs.directoryExists('nested');
+		const hasFile = await vfs.fileExists('nested/dir/file.txt');
+
+		assert.equal(hasDirectory, false);
+		assert.equal(hasFile, false);
 	} finally {
 		await fsp.rm(tempDir, {
 			force: true,

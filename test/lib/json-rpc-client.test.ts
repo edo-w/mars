@@ -4,8 +4,7 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'vitest';
-import { JsonRpcClient } from '#src/lib/json-rpc-client';
-import { MessageEnvelope } from '#src/lib/json-rpc-shapes';
+import { JsonRpcClient, MessageEnvelope } from '#src/lib/json-rpc';
 
 async function createSocketPath(): Promise<string> {
 	if (process.platform === 'win32') {
@@ -66,7 +65,51 @@ test('JsonRpcClient send returns the response message', async () => {
 			ok: true,
 			type: 'ping',
 		});
+		assert.equal(client.socket, null);
 		await client.close();
+	} finally {
+		server.close();
+		await removeSocketDir(socketPath);
+	}
+});
+
+test('JsonRpcClient keeps the socket open when keepAlive is enabled', async () => {
+	const socketPath = await createSocketPath();
+	const server = net.createServer((socket) => {
+		socket.on('data', (chunk) => {
+			const messageText = chunk.toString('utf8').trim();
+			const envelope = new MessageEnvelope(JSON.parse(messageText) as unknown);
+			const response = new MessageEnvelope({
+				id: envelope.id,
+				message: {
+					ok: true,
+					type: 'ping',
+				},
+			});
+
+			socket.write(`${JSON.stringify(response)}\n`);
+		});
+	});
+
+	try {
+		await new Promise<void>((resolve, reject) => {
+			server.listen(socketPath, () => {
+				resolve();
+			});
+			server.once('error', reject);
+		});
+
+		const client = new JsonRpcClient(socketPath);
+
+		client.setKeepAlive(true);
+		await client.send({
+			token: 'token',
+			type: 'ping',
+		});
+
+		assert.notEqual(client.socket, null);
+		await client.close();
+		assert.equal(client.socket, null);
 	} finally {
 		server.close();
 		await removeSocketDir(socketPath);

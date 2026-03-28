@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
-import { EncryptedSecretRecord, PasswordSecretsKdfRecord } from '#src/cli/app/secrets/secrets-shapes';
+import {
+	createSecretsDataKeyPath,
+	createSecretsKdfPath,
+	EncryptedSecretRecord,
+	PasswordSecretsKdfRecord,
+} from '#src/cli/app/secrets/secrets-shapes';
 
 test('EncryptedSecretRecord constructs from valid input', () => {
 	const record = new EncryptedSecretRecord({
@@ -48,4 +53,9 @@ test('PasswordSecretsKdfRecord fails construction for invalid input', () => {
 			hash_length: 32,
 		});
 	});
+});
+
+test('secrets backend paths are scoped under env', () => {
+	assert.equal(createSecretsDataKeyPath('gl-dev'), 'env/gl-dev/secrets/datakey.enc');
+	assert.equal(createSecretsKdfPath('gl-dev'), 'env/gl-dev/secrets/kdf.json');
 });

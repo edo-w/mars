@@ -12,7 +12,7 @@ import { type BackendInfo, renderS3BucketName } from '#src/cli/app/backend/backe
 import type { ConfigService } from '#src/cli/app/config/config-service';
 import { isS3BackendConfig } from '#src/cli/app/config/config-shapes';
 import type { Environment } from '#src/cli/app/environment/environment-shapes';
-import { isMissingObjectError } from '#src/lib/s3';
+import { isMissingObjectError, readS3BodyBytes } from '#src/lib/s3';
 import type { Vfs } from '#src/lib/vfs';
 
 export class S3BackendService implements BackendService {
@@ -37,6 +37,22 @@ export class S3BackendService implements BackendService {
 		const objectKey = this.resolveObjectKey(targetPath);
 
 		return `s3://${bucket}/${objectKey}`;
+	}
+
+	async readFile(environment: Environment, targetPath: string): Promise<Uint8Array> {
+		const bucket = await this.getBucket(environment);
+		const result = await this.s3Client.send(
+			new GetObjectCommand({
+				Bucket: bucket,
+				Key: this.resolveObjectKey(targetPath),
+			}),
+		);
+
+		if (result.Body === undefined) {
+			throw new Error(`Missing body for backend object "${targetPath}"`);
+		}
+
+		return readS3BodyBytes(result.Body);
 	}
 
 	async getInfo(environment: Environment): Promise<BackendInfo> {
@@ -127,19 +143,9 @@ export class S3BackendService implements BackendService {
 	}
 
 	async readTextFile(environment: Environment, targetPath: string): Promise<string> {
-		const bucket = await this.getBucket(environment);
-		const result = await this.s3Client.send(
-			new GetObjectCommand({
-				Bucket: bucket,
-				Key: this.resolveObjectKey(targetPath),
-			}),
-		);
+		const fileBytes = await this.readFile(environment, targetPath);
 
-		if (result.Body === undefined) {
-			throw new Error(`Missing body for backend object "${targetPath}"`);
-		}
-
-		return result.Body.transformToString();
+		return new TextDecoder().decode(fileBytes);
 	}
 
 	async removeFile(environment: Environment, targetPath: string): Promise<void> {
@@ -154,6 +160,10 @@ export class S3BackendService implements BackendService {
 	}
 
 	async writeTextFile(environment: Environment, targetPath: string, contents: string): Promise<void> {
+		await this.writeFile(environment, targetPath, new TextEncoder().encode(contents));
+	}
+
+	async writeFile(environment: Environment, targetPath: string, contents: Uint8Array): Promise<void> {
 		const bucket = await this.getBucket(environment);
 
 		await this.s3Client.send(

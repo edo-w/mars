@@ -71,8 +71,8 @@ test('PasswordSecretsProvider stores wrapped data key material in the backend', 
 		}
 
 		const dataKey = await service.getDataKey(environment);
-		const dataKeyFile = vfs.files.get('/repo/.mars/local/envs/gl-dev/secrets/datakey.enc');
-		const kdfFile = vfs.files.get('/repo/.mars/local/envs/gl-dev/secrets/kdf.json');
+		const dataKeyFile = vfs.files.get('/repo/.mars/local/env/gl-dev/secrets/datakey.enc');
+		const kdfFile = vfs.files.get('/repo/.mars/local/env/gl-dev/secrets/kdf.json');
 
 		assert.equal(dataKey.length, 32);
 		assert.notEqual(dataKeyFile, undefined);

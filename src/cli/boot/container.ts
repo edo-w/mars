@@ -9,6 +9,9 @@ import { InitService } from '#src/cli/app/init/init-service';
 import { KeyAgentManager } from '#src/cli/app/key-agent/key-agent-manager';
 import { KeyAgentServer } from '#src/cli/app/key-agent/key-agent-server';
 import { KeyAgentService } from '#src/cli/app/key-agent/key-agent-service';
+import { KvService } from '#src/cli/app/kv/kv-service';
+import { KvSyncService } from '#src/cli/app/kv/kv-sync-service';
+import { LockService } from '#src/cli/app/lock/lock-service';
 import { KeyAgentSecretsService } from '#src/cli/app/secrets/key-agent-secrets-service';
 import { KmsSecretsProvider } from '#src/cli/app/secrets/kms-secrets-provider';
 import { PasswordSecretsProvider } from '#src/cli/app/secrets/password-secrets-provider';
@@ -96,6 +99,27 @@ export function createContainer(options: CreateContainerOptions): Tiny {
 		return keyAgentSecretsService;
 	});
 	container.addSingletonClass(Tui, []);
+	container.addScopedFactory(LockService, (t) => {
+		const backendFactory = t.get(BackendFactory);
+
+		return new LockService(backendFactory);
+	});
+	container.addScopedFactory(KvSyncService, (t) => {
+		const vfs = t.get(Vfs);
+		const configService = t.get(ConfigService);
+		const backendFactory = t.get(BackendFactory);
+		const lockService = t.get(LockService);
+
+		return new KvSyncService(vfs, configService, backendFactory, lockService);
+	});
+	container.addScopedFactory(KvService, (t) => {
+		const vfs = t.get(Vfs);
+		const configService = t.get(ConfigService);
+		const kvSyncService = t.get(KvSyncService);
+		const secretsService = t.get(ISecretsService);
+
+		return new KvService(vfs, configService, kvSyncService, secretsService);
+	});
 	container.addScopedFactory(SecretsBootstrapperFactory, (t) => {
 		return new SecretsBootstrapperFactory(t);
 	});

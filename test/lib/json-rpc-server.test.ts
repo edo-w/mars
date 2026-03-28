@@ -4,8 +4,7 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'vitest';
-import { JsonRpcServer } from '#src/lib/json-rpc-server';
-import { MessageEnvelope } from '#src/lib/json-rpc-shapes';
+import { JsonRpcServer, MessageEnvelope } from '#src/lib/json-rpc';
 
 async function createSocketPath(): Promise<string> {
 	if (process.platform === 'win32') {
@@ -33,6 +32,7 @@ async function removeSocketDir(socketPath: string): Promise<void> {
 test('JsonRpcServer emits message events and responds on the same socket', async () => {
 	const socketPath = await createSocketPath();
 	const server = new JsonRpcServer(socketPath);
+	const responseSignal = Promise.withResolvers<void>();
 	let socketId = -1;
 	let envelopeId = -1;
 	let message: Record<string, unknown> | null = null;
@@ -41,10 +41,14 @@ test('JsonRpcServer emits message events and responds on the same socket', async
 		socketId = event.socket_id;
 		envelopeId = event.envelope_id;
 		message = event.message;
-		void server.respond(event.socket_id, event.envelope_id, {
-			ok: true,
-			type: 'ping',
-		});
+		void server
+			.respond(event.socket_id, event.envelope_id, {
+				ok: true,
+				type: 'ping',
+			})
+			.then(() => {
+				responseSignal.resolve();
+			});
 	});
 
 	try {
@@ -90,6 +94,7 @@ test('JsonRpcServer emits message events and responds on the same socket', async
 			ok: true,
 			type: 'ping',
 		});
+		await responseSignal.promise;
 	} finally {
 		await server.close();
 		await removeSocketDir(socketPath);

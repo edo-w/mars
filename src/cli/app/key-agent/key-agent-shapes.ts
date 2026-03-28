@@ -2,7 +2,7 @@ import os from 'node:os';
 import * as z from 'zod';
 import { EncryptedSecretRecord } from '#src/cli/app/secrets/secrets-shapes';
 import { KeyAgentState } from '#src/cli/app/state/state-shapes';
-import type { RequestMessage, ResponseMessage } from '#src/lib/json-rpc-shapes';
+import type { RequestMessage, ResponseMessage } from '#src/lib/json-rpc';
 
 export const KEY_AGENT_STARTUP_DELAYS = [100, 200, 400, 800, 1600];
 export const KEY_AGENT_IDLE_TIMEOUT_MS = 5 * 60 * 1000;

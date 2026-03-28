@@ -37,3 +37,20 @@ export function isMissingObjectError(error: unknown): boolean {
 
 	return error.name === 'NotFound' || error.name === 'NoSuchKey' || httpStatusCode === 404;
 }
+
+export async function readS3BodyBytes(body: {
+	transformToByteArray?: () => Promise<Uint8Array>;
+	transformToString?: () => Promise<string>;
+}): Promise<Uint8Array> {
+	if (body.transformToByteArray !== undefined) {
+		return Uint8Array.from(await body.transformToByteArray());
+	}
+
+	if (body.transformToString !== undefined) {
+		const contents = await body.transformToString();
+
+		return new TextEncoder().encode(contents);
+	}
+
+	throw new Error('unsupported s3 body');
+}

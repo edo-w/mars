@@ -20,6 +20,12 @@ export class LocalBackendService implements BackendService {
 		return this.vfs.fileExists(localPath);
 	}
 
+	async readFile(_environment: Environment, targetPath: string): Promise<Uint8Array> {
+		const localPath = await this.resolvePath(targetPath);
+
+		return this.vfs.readFile(localPath);
+	}
+
 	async getFilePath(_environment: Environment, targetPath: string): Promise<string> {
 		const localPath = await this.resolvePath(targetPath);
 
@@ -67,6 +73,12 @@ export class LocalBackendService implements BackendService {
 		const localPath = await this.resolvePath(targetPath);
 
 		await this.vfs.writeTextFile(localPath, contents);
+	}
+
+	async writeFile(_environment: Environment, targetPath: string, contents: Uint8Array): Promise<void> {
+		const localPath = await this.resolvePath(targetPath);
+
+		await this.vfs.writeFile(localPath, contents);
 	}
 
 	private async resolvePath(targetPath: string): Promise<string> {

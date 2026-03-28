@@ -12,8 +12,13 @@ import {
 	KeyAgentShutdownRequest,
 } from '#src/cli/app/key-agent/key-agent-shapes';
 import type { StateService } from '#src/cli/app/state/state-service';
-import { JsonRpcServer } from '#src/lib/json-rpc-server';
-import type { JsonRpcServerErrorEvent, JsonRpcServerMessageEvent, RequestMessage } from '#src/lib/json-rpc-shapes';
+import { IdleTimer } from '#src/lib/idle-timer';
+import {
+	JsonRpcServer,
+	type JsonRpcServerErrorEvent,
+	type JsonRpcServerMessageEvent,
+	type RequestMessage,
+} from '#src/lib/json-rpc';
 import { PromiseSignal } from '#src/lib/promise-signal';
 import { isMissingPathError } from '#src/lib/vfs';
 import type { VLogger } from '#src/lib/vlogger';
@@ -21,7 +26,7 @@ import { vlogManager } from '#src/lib/vlogger';
 
 export class KeyAgentServer {
 	closeSignal: PromiseSignal | null;
-	idleTimer: NodeJS.Timeout | null;
+	idleTimer: IdleTimer;
 	jsonRpcServer: JsonRpcServer | null;
 	keyAgentService: KeyAgentService;
 	logger: VLogger;
@@ -29,11 +34,15 @@ export class KeyAgentServer {
 
 	constructor(stateService: StateService, keyAgentService: KeyAgentService) {
 		this.closeSignal = null;
-		this.idleTimer = null;
+		this.idleTimer = new IdleTimer(KEY_AGENT_IDLE_TIMEOUT_MS);
 		this.jsonRpcServer = null;
 		this.keyAgentService = keyAgentService;
 		this.logger = vlogManager.getLogger(['mars', 'key-agent', 'server']);
 		this.stateService = stateService;
+		this.idleTimer.onTick(() => {
+			this.logger.info('key-agent server idle timeout reached');
+			void this.closeServer();
+		});
 	}
 
 	async serveAndWaitForClose(): Promise<void> {
@@ -60,7 +69,7 @@ export class KeyAgentServer {
 		await jsonRpcServer.listen();
 		await this.stateService.setKeyAgent(keyAgent);
 		this.logger.info(`key-agent server started on ${keyAgent.socket}`);
-		this.resetIdleTimer();
+		this.idleTimer.reset();
 		await closeSignal.wait();
 		this.logger.info('key-agent server shutting down');
 		await this.stateService.clearKeyAgentIfMatches(keyAgent.pid, keyAgent.token);
@@ -74,7 +83,7 @@ export class KeyAgentServer {
 			return;
 		}
 
-		this.removeIdleTimer();
+		this.idleTimer.stop();
 		await jsonRpcServer.close();
 
 		const closeSignal = this.closeSignal;
@@ -88,7 +97,7 @@ export class KeyAgentServer {
 		const requestFields = event.message;
 		const requestMessage = readKeyAgentRequestMessage(requestFields);
 
-		this.resetIdleTimer();
+		this.idleTimer.reset();
 		this.logger.info(`received key-agent request ${requestMessage.type}`);
 
 		try {
@@ -107,13 +116,13 @@ export class KeyAgentServer {
 			if (requestMessage.type === 'encrypt') {
 				const request = new KeyAgentEncryptRequest(requestFields);
 
-				return this.keyAgentService.encrypt(request);
+				return await this.keyAgentService.encrypt(request);
 			}
 
 			if (requestMessage.type === 'decrypt') {
 				const request = new KeyAgentDecryptRequest(requestFields);
 
-				return this.keyAgentService.decrypt(request);
+				return await this.keyAgentService.decrypt(request);
 			}
 		} catch (error) {
 			const errorMessage = String(error);
@@ -151,15 +160,6 @@ export class KeyAgentServer {
 		}
 	}
 
-	private removeIdleTimer(): void {
-		if (this.idleTimer === null) {
-			return;
-		}
-
-		clearTimeout(this.idleTimer);
-		this.idleTimer = null;
-	}
-
 	private async removeSocketFile(socketPath: string): Promise<void> {
 		if (process.platform === 'win32') {
 			return;
@@ -172,14 +172,6 @@ export class KeyAgentServer {
 				throw error;
 			}
 		}
-	}
-
-	private resetIdleTimer(): void {
-		this.removeIdleTimer();
-		this.idleTimer = setTimeout(() => {
-			this.logger.info('key-agent server idle timeout reached');
-			void this.closeServer();
-		}, KEY_AGENT_IDLE_TIMEOUT_MS);
 	}
 }
 

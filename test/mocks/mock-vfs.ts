@@ -5,11 +5,13 @@ import type { Vfs } from '#src/lib/vfs';
 type VfsLike = PublicLike<Vfs>;
 
 export class MockVfs implements VfsLike {
+	binaryFiles: Map<string, Uint8Array>;
 	cwd: string;
 	directories: Set<string>;
 	files: Map<string, string>;
 
 	constructor(cwd = '/repo') {
+		this.binaryFiles = new Map();
 		this.cwd = cwd;
 		this.directories = new Set([cwd]);
 		this.files = new Map();
@@ -38,7 +40,9 @@ export class MockVfs implements VfsLike {
 	}
 
 	async fileExists(targetPath: string): Promise<boolean> {
-		return this.files.has(this.resolve(targetPath));
+		const resolvedPath = this.resolve(targetPath);
+
+		return this.files.has(resolvedPath) || this.binaryFiles.has(resolvedPath);
 	}
 
 	async listDirectory(targetPath: string): Promise<string[]> {
@@ -66,11 +70,62 @@ export class MockVfs implements VfsLike {
 			}
 		}
 
+		for (const filePath of this.binaryFiles.keys()) {
+			const entryName = getDirectChildName(resolvedPath, filePath);
+
+			if (entryName !== null) {
+				entryNames.add(entryName);
+			}
+		}
+
 		return [...entryNames].sort((left, right) => left.localeCompare(right));
 	}
 
+	async readFile(targetPath: string): Promise<Uint8Array> {
+		const resolvedPath = this.resolve(targetPath);
+		const binaryContents = this.binaryFiles.get(resolvedPath);
+
+		if (binaryContents !== undefined) {
+			return binaryContents;
+		}
+
+		const textContents = this.files.get(resolvedPath);
+
+		if (textContents === undefined) {
+			throw new Error(`Missing file: ${targetPath}`);
+		}
+
+		return new TextEncoder().encode(textContents);
+	}
+
 	async removeFile(targetPath: string): Promise<void> {
-		this.files.delete(this.resolve(targetPath));
+		const resolvedPath = this.resolve(targetPath);
+
+		this.binaryFiles.delete(resolvedPath);
+		this.files.delete(resolvedPath);
+	}
+
+	async removeDirectory(targetPath: string): Promise<void> {
+		const resolvedPath = this.resolve(targetPath);
+		const pathsToRemove = [...this.directories].filter((directoryPath) => {
+			return directoryPath === resolvedPath || directoryPath.startsWith(`${resolvedPath}/`);
+		});
+
+		for (const directoryPath of pathsToRemove) {
+			this.directories.delete(directoryPath);
+		}
+
+		for (const filePath of [...this.files.keys()]) {
+			if (filePath === resolvedPath || filePath.startsWith(`${resolvedPath}/`)) {
+				this.files.delete(filePath);
+			}
+		}
+
+		for (const filePath of [...this.binaryFiles.keys()]) {
+			if (filePath === resolvedPath || filePath.startsWith(`${resolvedPath}/`)) {
+				this.binaryFiles.delete(filePath);
+			}
+		}
 	}
 
 	async readTextFile(targetPath: string): Promise<string> {
@@ -87,6 +142,19 @@ export class MockVfs implements VfsLike {
 		return path.posix.resolve(this.cwd, ...pathParts);
 	}
 
+	setFile(targetPath: string, contents: Uint8Array): void {
+		const resolvedPath = this.resolve(targetPath);
+		const directoryPath = path.posix.dirname(resolvedPath);
+		const directoryPaths = collectDirectoryPaths(directoryPath);
+
+		for (const parentDirectoryPath of directoryPaths) {
+			this.directories.add(parentDirectoryPath);
+		}
+
+		this.binaryFiles.set(resolvedPath, contents);
+		this.files.delete(resolvedPath);
+	}
+
 	setTextFile(targetPath: string, contents: string): void {
 		const resolvedPath = this.resolve(targetPath);
 		const directoryPath = path.posix.dirname(resolvedPath);
@@ -96,7 +164,12 @@ export class MockVfs implements VfsLike {
 			this.directories.add(parentDirectoryPath);
 		}
 
+		this.binaryFiles.delete(resolvedPath);
 		this.files.set(resolvedPath, contents);
+	}
+
+	async writeFile(targetPath: string, contents: Uint8Array): Promise<void> {
+		this.setFile(targetPath, contents);
 	}
 
 	async writeTextFile(targetPath: string, contents: string): Promise<void> {

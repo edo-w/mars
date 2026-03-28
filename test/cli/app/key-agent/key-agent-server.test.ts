@@ -97,6 +97,8 @@ test('KeyAgentServer serves ping and shutdown requests over the key-agent socket
 	});
 	const client = new KeyAgentClient(keyAgent.socket);
 
+	client.setKeepAlive(true);
+
 	try {
 		const pingResponse = await client.ping({
 			token: keyAgent.token,
@@ -118,4 +120,38 @@ test('KeyAgentServer serves ping and shutdown requests over the key-agent socket
 
 	assert.equal(setKeyAgent.mock.calls.length, 1);
 	assert.equal(clearKeyAgentIfMatches.mock.calls.length, 1);
+});
+
+test('KeyAgentServer returns an error response when encrypt fails asynchronously', async () => {
+	const { getCurrentKeyAgent, keyAgentService, server } = sut();
+
+	keyAgentService.encrypt.mockImplementation((() => {
+		return Promise.reject(new Error('missing secrets password for "app-dev"'));
+	}) as never);
+
+	const servePromise = server.serveAndWaitForClose();
+	const keyAgent = await waitFor(() => {
+		return getCurrentKeyAgent();
+	});
+	const client = new KeyAgentClient(keyAgent.socket);
+
+	client.setKeepAlive(true);
+
+	try {
+		await assert.rejects(async () => {
+			await client.encrypt({
+				environment: 'app-dev',
+				plaintext: 'Zm9vYmFy',
+				token: keyAgent.token,
+				type: 'encrypt',
+			});
+		}, /missing secrets password for "app-dev"/);
+	} finally {
+		await client.shutdown({
+			token: keyAgent.token,
+			type: 'shutdown',
+		});
+		await servePromise;
+		await client.close();
+	}
 });

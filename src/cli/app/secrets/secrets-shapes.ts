@@ -1,7 +1,7 @@
 import path from 'node:path';
 import * as z from 'zod';
 
-export const ENVIRONMENTS_DIRECTORY = 'envs';
+export const ENVIRONMENTS_DIRECTORY = 'env';
 export const SECRETS_DIRECTORY = 'secrets';
 export const DATA_KEY_FILE = 'datakey.enc';
 export const KDF_FILE = 'kdf.json';
