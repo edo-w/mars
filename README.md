@@ -1,16 +1,18 @@
+```
+\/\/\/\/\/\/\______/\/\____/\/\/\/\____/\/\/\/\__________/\/\/\/\__
+_/\/\__/\__/\/\__/\/\/\/\____/\/\______________/\/\______/\/\__/\/\
+__/\/\__/\/\/\/\/\__/\/\________/\/\/\/\__________/\/\/\/\__/\/\___
+______________________________________________/\/\______________/\/
+_/\/\/\__/\/\____/\/\/\______/\/\__/\/\____/\/\/\/\____________/\/\
+___\/\/\/\/\/\______/\/\____/\/\/\/\____/\/\/\/\__________/\/\/\/\_
+__/\/\__/\/\/\/\____/\/\______________/\/\______/\/\__/\/\__/\/\___
+\/\__/\/\/\/\/\__/\/\________/\/\/\/\__________/\/\/\/\__/\/\______
+```
+
 # mars
 
-To install dependencies:
+mars is a infrastructure & deployment automation tool that wraps terragrunt and docker to help you deploy your applications
 
-```bash
-bun install
-```
+!NOTE! WIP
 
-To run:
-
-```bash
-bun run index.ts
-```
-
-This project was created using `bun init` in bun v1.3.10.
-[Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+![drifting towards mars](./docs/drifting.webp)
