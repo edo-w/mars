@@ -1,9 +1,9 @@
 import type { Tiny } from '@edo-w/tiny';
 import { Command } from 'commander';
 import * as z from 'zod';
-import { BackendFactory } from '#src/cli/app/backend/backend-factory';
-import { EnvironmentService } from '#src/cli/app/environment/environment-service';
-import { SecretsProviderFactory } from '#src/cli/app/secrets/secrets-provider-factory';
+import { BackendFactory } from '#src/app/backend/backend-factory';
+import { EnvironmentService } from '#src/app/environment/environment-service';
+import { SecretsProviderFactory } from '#src/app/secrets/secrets-provider-factory';
 import { vlogManager } from '#src/lib/vlogger';
 
 export class EnvShowCommandInput {

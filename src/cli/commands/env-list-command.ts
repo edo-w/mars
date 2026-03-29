@@ -1,6 +1,6 @@
 import type { Tiny } from '@edo-w/tiny';
 import { Command } from 'commander';
-import { EnvironmentService } from '#src/cli/app/environment/environment-service';
+import { EnvironmentService } from '#src/app/environment/environment-service';
 import { vlogManager } from '#src/lib/vlogger';
 
 export function createEnvListCommand(container: Tiny): Command {

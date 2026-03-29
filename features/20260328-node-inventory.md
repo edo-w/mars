@@ -655,7 +655,7 @@ Same V1 lock strategy as KV:
 
 Suggested new app area:
 
-- `src/cli/app/node`
+- `src/app/node`
 
 Suggested files:
 
@@ -712,3 +712,4 @@ Suggested command files:
 - `public_ip` is immutable in V1
 - mutating node actions create `node_event` rows
 - the design remains compatible with future Terraform or Terragrunt collectors
+

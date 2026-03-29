@@ -210,7 +210,7 @@ managed password object.
 
 Keep the logic under:
 
-- `src/cli/app/ssh-ca/SshCaService`
+- `src/app/ssh-ca/SshCaService`
 
 Suggested responsibilities:
 
@@ -260,3 +260,4 @@ disk.
   - encrypted password object
 - the password is never written to local disk in decrypted form
 - existing SSH CAs without encrypted password objects are left untouched
+

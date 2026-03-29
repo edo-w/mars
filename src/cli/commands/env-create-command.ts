@@ -1,7 +1,7 @@
 import type { Tiny } from '@edo-w/tiny';
 import { Command } from 'commander';
 import * as z from 'zod';
-import { EnvironmentService } from '#src/cli/app/environment/environment-service';
+import { EnvironmentService } from '#src/app/environment/environment-service';
 import { vlogManager } from '#src/lib/vlogger';
 
 export class EnvCreateCommandInput {

@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { Tiny } from '@edo-w/tiny';
 import { test, vi } from 'vitest';
-import { EnvironmentService } from '#src/cli/app/environment/environment-service';
-import { NodeStatus } from '#src/cli/app/node/node-models';
-import { NodeService } from '#src/cli/app/node/node-service';
+import { EnvironmentService } from '#src/app/environment/environment-service';
+import { NodeStatus } from '#src/app/node/node-models';
+import { NodeService } from '#src/app/node/node-service';
 import { createNodeListCommand, handleNodeListCommand } from '#src/cli/commands/node-list-command';
 import { runCommand } from '#test/helpers/command';
 import { createCommandContainer } from '#test/helpers/command-container';

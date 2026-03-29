@@ -1,6 +1,6 @@
 import type { Tiny } from '@edo-w/tiny';
 import { Command } from 'commander';
-import { KeyAgentManager } from '#src/cli/app/key-agent/key-agent-manager';
+import { KeyAgentManager } from '#src/app/key-agent/key-agent-manager';
 import { vlogManager } from '#src/lib/vlogger';
 
 export function createKeyAgentStartCommand(container: Tiny): Command {

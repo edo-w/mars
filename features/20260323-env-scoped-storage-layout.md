@@ -136,7 +136,7 @@ This should be treated as a repo convention after this feature lands.
 
 Keep the refactor inside the existing:
 
-- `src/cli/app/ssh-ca/SshCaService`
+- `src/app/ssh-ca/SshCaService`
 
 Update the path helpers there, or in the SSH CA shapes/helpers, so all SSH CA
 commands inherit the new layout automatically.
@@ -175,3 +175,4 @@ environment is already resolved.
 - `mars ssh ca destroy <name>` only removes local and S3 files for the
   resolved environment
 - destroy confirmation output shows the new environment-scoped resource paths
+

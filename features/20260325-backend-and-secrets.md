@@ -271,19 +271,19 @@ Here `<backend>` means:
 
 Use:
 
-- `src/cli/app/backend/backend-service.ts`
-- `src/cli/app/backend/backend-factory.ts`
-- `src/cli/app/backend/backend-bootstrapper.ts`
-- `src/cli/app/backend/backend-bootstrapper-factory.ts`
+- `src/app/backend/backend-service.ts`
+- `src/app/backend/backend-factory.ts`
+- `src/app/backend/backend-bootstrapper.ts`
+- `src/app/backend/backend-bootstrapper-factory.ts`
 
 This file defines the backend contract.
 
 Implementations:
 
-- `src/cli/app/backend/local-backend-service.ts`
-- `src/cli/app/backend/s3-backend-service.ts`
-- `src/cli/app/backend/local-backend-bootstrapper.ts`
-- `src/cli/app/backend/s3-backend-bootstrapper.ts`
+- `src/app/backend/local-backend-service.ts`
+- `src/app/backend/s3-backend-service.ts`
+- `src/app/backend/local-backend-bootstrapper.ts`
+- `src/app/backend/s3-backend-bootstrapper.ts`
 
 Shared backend shapes may live alongside these under the backend app folder as
 needed.
@@ -292,22 +292,22 @@ needed.
 
 Use:
 
-- `src/cli/app/secrets/secrets-service.ts`
-- `src/cli/app/secrets/secrets-provider.ts`
-- `src/cli/app/secrets/secrets-bootstrapper.ts`
-- `src/cli/app/secrets/secrets-bootstrapper-factory.ts`
-- `src/cli/app/secrets/secrets-shapes.ts`
+- `src/app/secrets/secrets-service.ts`
+- `src/app/secrets/secrets-provider.ts`
+- `src/app/secrets/secrets-bootstrapper.ts`
+- `src/app/secrets/secrets-bootstrapper-factory.ts`
+- `src/app/secrets/secrets-shapes.ts`
 
 `secrets-service.ts` defines the client-facing secrets contract used by Mars
 features.
 
 Implementations and providers:
 
-- `src/cli/app/secrets/key-agent-secrets-service.ts`
-- `src/cli/app/secrets/password-secrets-provider.ts`
-- `src/cli/app/secrets/kms-secrets-provider.ts`
-- `src/cli/app/secrets/password-secrets-bootstrapper.ts`
-- `src/cli/app/secrets/kms-secrets-bootstrapper.ts`
+- `src/app/secrets/key-agent-secrets-service.ts`
+- `src/app/secrets/password-secrets-provider.ts`
+- `src/app/secrets/kms-secrets-provider.ts`
+- `src/app/secrets/password-secrets-bootstrapper.ts`
+- `src/app/secrets/kms-secrets-bootstrapper.ts`
 
 ### Responsibilities
 
@@ -395,3 +395,4 @@ Implementations and providers:
 - encryption uses a standard authenticated mode such as `AES-256-GCM`
 - secrets providers use the backend abstraction for their persistence needs
 - backend and secrets provider choice remain repo-wide, not per-environment
+

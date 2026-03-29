@@ -289,7 +289,7 @@ The passphrase must not be persisted by Mars to disk.
 
 Add SSH CA behavior under the CLI app layer in:
 
-- `src/cli/app/ssh-ca`
+- `src/app/ssh-ca`
 
 Use:
 
@@ -341,7 +341,7 @@ Use `ssh-keygen` and set the key comment to:
 ## Suggested Implementation Shape
 
 - add `mars ssh` and `mars ssh ca` command groups
-- add `src/cli/app/ssh-ca/SshCaService`
+- add `src/app/ssh-ca/SshCaService`
 - add reusable helpers for SSH CA filenames and paths
 - implement environment resolution using the existing environment-selection
   rules
@@ -390,3 +390,4 @@ Use `ssh-keygen` and set the key comment to:
 - future SSH certificate issuance can rely on the documented
   `MARS_SSH_CA_<name>_PASS` environment variable pattern without requiring
   changes to this stored-key layout
+

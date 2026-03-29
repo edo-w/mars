@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { Tiny } from '@edo-w/tiny';
 import { test, vi } from 'vitest';
-import { ConfigService } from '#src/cli/app/config/config-service';
-import { KeyAgentManager } from '#src/cli/app/key-agent/key-agent-manager';
-import { KeyAgentServer } from '#src/cli/app/key-agent/key-agent-server';
+import { ConfigService } from '#src/app/config/config-service';
+import { KeyAgentManager } from '#src/app/key-agent/key-agent-manager';
+import { KeyAgentServer } from '#src/app/key-agent/key-agent-server';
 import { configureKeyAgentLogging } from '#src/cli/boot/logging';
 import { createKeyAgentServeCommand, handleKeyAgentServeCommand } from '#src/cli/commands/key-agent-serve-command';
 import { Vfs } from '#src/lib/vfs';

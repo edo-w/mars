@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { Tiny } from '@edo-w/tiny';
 import { test, vi } from 'vitest';
-import { InitService } from '#src/cli/app/init/init-service';
+import { InitService } from '#src/app/init/init-service';
 import { createInitCommand, handleInitCommand } from '#src/cli/commands/init-command';
 import { runCommand } from '#test/helpers/command';
 import { createCommandScope } from '#test/helpers/command-container';

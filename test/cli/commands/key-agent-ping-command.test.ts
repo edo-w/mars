@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { Tiny } from '@edo-w/tiny';
 import { test, vi } from 'vitest';
-import { KeyAgentManager } from '#src/cli/app/key-agent/key-agent-manager';
+import { KeyAgentManager } from '#src/app/key-agent/key-agent-manager';
 import { createKeyAgentPingCommand, handleKeyAgentPingCommand } from '#src/cli/commands/key-agent-ping-command';
 import { runCommand } from '#test/helpers/command';
 import { createCommandScope } from '#test/helpers/command-container';

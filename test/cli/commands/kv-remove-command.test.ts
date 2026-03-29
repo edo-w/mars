@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { Tiny } from '@edo-w/tiny';
 import { test, vi } from 'vitest';
-import { EnvironmentService } from '#src/cli/app/environment/environment-service';
-import { KvService } from '#src/cli/app/kv/kv-service';
+import { EnvironmentService } from '#src/app/environment/environment-service';
+import { KvService } from '#src/app/kv/kv-service';
 import { createKvRemoveCommand, handleKvRemoveCommand } from '#src/cli/commands/kv-remove-command';
 import { runCommand } from '#test/helpers/command';
 import { createCommandContainer } from '#test/helpers/command-container';

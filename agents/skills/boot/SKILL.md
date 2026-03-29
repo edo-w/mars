@@ -39,7 +39,7 @@ Typical shape:
 - Prefer boot helpers with explicit names such as `configureLogging()`,
   `createMarsDeps()`, or `createProgram()`.
 - Use the boot layer as the place where app-wide wiring becomes explicit.
-- Put feature or app behavior under the app layer such as `src/cli/app/...`,
+- Put feature or app behavior under the app layer such as `src/app/...`,
   not inside boot helpers.
 
 ## Validation
@@ -50,3 +50,4 @@ After changing startup or wiring behavior, run:
 2. `bun run lint`
 3. `bun run check`
 4. `bun run test`
+

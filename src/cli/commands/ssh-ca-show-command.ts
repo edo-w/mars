@@ -1,9 +1,9 @@
 import type { Tiny } from '@edo-w/tiny';
 import { Command } from 'commander';
 import * as z from 'zod';
-import { EnvironmentService } from '#src/cli/app/environment/environment-service';
-import { SshCaService } from '#src/cli/app/ssh-ca/ssh-ca-service';
-import { DEFAULT_SSH_CA_NAME } from '#src/cli/app/ssh-ca/ssh-ca-shapes';
+import { EnvironmentService } from '#src/app/environment/environment-service';
+import { SshCaService } from '#src/app/ssh-ca/ssh-ca-service';
+import { DEFAULT_SSH_CA_NAME } from '#src/app/ssh-ca/ssh-ca-shapes';
 import { vlogManager } from '#src/lib/vlogger';
 
 export class SshCaShowCommandInput {

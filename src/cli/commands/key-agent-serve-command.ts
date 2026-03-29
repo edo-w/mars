@@ -1,8 +1,8 @@
 import type { Tiny } from '@edo-w/tiny';
 import { Command } from 'commander';
-import { ConfigService } from '#src/cli/app/config/config-service';
-import { KeyAgentManager } from '#src/cli/app/key-agent/key-agent-manager';
-import { KeyAgentServer } from '#src/cli/app/key-agent/key-agent-server';
+import { ConfigService } from '#src/app/config/config-service';
+import { KeyAgentManager } from '#src/app/key-agent/key-agent-manager';
+import { KeyAgentServer } from '#src/app/key-agent/key-agent-server';
 import { configureKeyAgentLogging } from '#src/cli/boot/logging';
 import { Vfs } from '#src/lib/vfs';
 

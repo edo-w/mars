@@ -167,13 +167,13 @@ provider instead of hardcoding it into environment management.
 
 Use:
 
-- `src/cli/app/backend/backend-bootstrapper.ts`
-- `src/cli/app/backend/backend-bootstrapper-factory.ts`
+- `src/app/backend/backend-bootstrapper.ts`
+- `src/app/backend/backend-bootstrapper-factory.ts`
 
 Implementations:
 
-- `src/cli/app/backend/local-backend-bootstrapper.ts`
-- `src/cli/app/backend/s3-backend-bootstrapper.ts`
+- `src/app/backend/local-backend-bootstrapper.ts`
+- `src/app/backend/s3-backend-bootstrapper.ts`
 
 Each backend must always have a bootstrapper, even if that bootstrapper is a
 no-op. For example, `local` has no external resources to create, but it should
@@ -183,13 +183,13 @@ still expose a bootstrapper so the command flow stays consistent.
 
 Use:
 
-- `src/cli/app/secrets/secrets-bootstrapper.ts`
-- `src/cli/app/secrets/secrets-bootstrapper-factory.ts`
+- `src/app/secrets/secrets-bootstrapper.ts`
+- `src/app/secrets/secrets-bootstrapper-factory.ts`
 
 Implementations:
 
-- `src/cli/app/secrets/password-secrets-bootstrapper.ts`
-- `src/cli/app/secrets/kms-secrets-bootstrapper.ts`
+- `src/app/secrets/password-secrets-bootstrapper.ts`
+- `src/app/secrets/kms-secrets-bootstrapper.ts`
 
 Each secrets provider must also always have a bootstrapper, even when it has no
 external setup work.
@@ -265,3 +265,4 @@ resolution should follow the same approach:
 - created buckets block all public access
 - created buckets have SSE enabled
 - created buckets enforce TLS
+

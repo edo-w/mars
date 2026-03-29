@@ -24,12 +24,7 @@ test('LogtapeVLogger logs literal info messages through the message property', (
 
 	vlogger.info('/^ip-\\d{1,3}-\\d{1,3}-\\d{1,3}-\\d{1,3}$/');
 
-	assert.deepEqual(logger.info.mock.calls[0], [
-		'{message}',
-		{
-			message: '/^ip-\\d{1,3}-\\d{1,3}-\\d{1,3}-\\d{1,3}$/',
-		},
-	]);
+	assert.deepEqual(logger.info.mock.calls[0], ['/^ip-\\d\\{1,3\\}-\\d\\{1,3\\}-\\d\\{1,3\\}-\\d\\{1,3\\}$/']);
 });
 
 test('LogtapeVLogger logs literal error messages through the message property', () => {
@@ -38,10 +33,5 @@ test('LogtapeVLogger logs literal error messages through the message property', 
 
 	vlogger.error('[{"message":"must match /^ip-\\\\d{1,3}$/"}]');
 
-	assert.deepEqual(logger.error.mock.calls[0], [
-		'{message}',
-		{
-			message: '[{"message":"must match /^ip-\\\\d{1,3}$/"}]',
-		},
-	]);
+	assert.deepEqual(logger.error.mock.calls[0], ['[\\{"message":"must match /^ip-\\\\d\\{1,3\\}$/"\\}]']);
 });

@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { Tiny } from '@edo-w/tiny';
 import { test, vi } from 'vitest';
-import { EnvironmentService } from '#src/cli/app/environment/environment-service';
-import { SshCaService } from '#src/cli/app/ssh-ca/ssh-ca-service';
+import { EnvironmentService } from '#src/app/environment/environment-service';
+import { SshCaService } from '#src/app/ssh-ca/ssh-ca-service';
 import { createSshCaDestroyCommand, handleSshCaDestroyCommand } from '#src/cli/commands/ssh-ca-destroy-command';
 import { runCommand } from '#test/helpers/command';
 import { createEnvironment } from '#test/helpers/environment';

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { Tiny } from '@edo-w/tiny';
 import { test, vi } from 'vitest';
-import { EnvironmentService } from '#src/cli/app/environment/environment-service';
+import { EnvironmentService } from '#src/app/environment/environment-service';
 import { createEnvSelectCommand, handleEnvSelectCommand } from '#src/cli/commands/env-select-command';
 import { runCommand } from '#test/helpers/command';
 import { createCommandScope } from '#test/helpers/command-container';

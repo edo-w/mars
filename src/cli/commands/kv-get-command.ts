@@ -1,8 +1,8 @@
 import type { Tiny } from '@edo-w/tiny';
 import { Command } from 'commander';
 import * as z from 'zod';
-import { EnvironmentService } from '#src/cli/app/environment/environment-service';
-import { KvService } from '#src/cli/app/kv/kv-service';
+import { EnvironmentService } from '#src/app/environment/environment-service';
+import { KvService } from '#src/app/kv/kv-service';
 import { vlogManager } from '#src/lib/vlogger';
 
 export class KvGetCommandInput {

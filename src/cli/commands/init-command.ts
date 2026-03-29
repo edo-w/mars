@@ -1,6 +1,6 @@
 import type { Tiny } from '@edo-w/tiny';
 import { Command } from 'commander';
-import { InitService } from '#src/cli/app/init/init-service';
+import { InitService } from '#src/app/init/init-service';
 
 export function createInitCommand(container: Tiny): Command {
 	const command = new Command('init');

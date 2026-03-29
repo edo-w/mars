@@ -1,4 +1,4 @@
-import { EnvironmentConfig } from '#src/cli/app/environment/environment-shapes';
+import { EnvironmentConfig } from '#src/app/environment/environment-shapes';
 
 export function createEnvironment() {
 	const config = new EnvironmentConfig({

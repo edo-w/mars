@@ -1,10 +1,10 @@
 import type { Tiny } from '@edo-w/tiny';
 import { Command } from 'commander';
 import * as z from 'zod';
-import { BackendBootstrapperFactory } from '#src/cli/app/backend/backend-bootstrapper-factory';
-import { EnvironmentService } from '#src/cli/app/environment/environment-service';
-import type { EnvironmentResource } from '#src/cli/app/environment/environment-shapes';
-import { SecretsBootstrapperFactory } from '#src/cli/app/secrets/secrets-bootstrapper-factory';
+import { BackendBootstrapperFactory } from '#src/app/backend/backend-bootstrapper-factory';
+import { EnvironmentService } from '#src/app/environment/environment-service';
+import type { EnvironmentResource } from '#src/app/environment/environment-shapes';
+import { SecretsBootstrapperFactory } from '#src/app/secrets/secrets-bootstrapper-factory';
 import { Tui } from '#src/lib/tui';
 import { vlogManager } from '#src/lib/vlogger';
 

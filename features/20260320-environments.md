@@ -247,7 +247,7 @@ Behavior:
 
 ### App Services
 
-Create the following services under `src/cli/app`:
+Create the following services under `src/app`:
 
 - `StateService`
 - `EnvironmentService`

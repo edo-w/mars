@@ -43,26 +43,22 @@ export class LogtapeVLogger implements VLogger {
 	}
 
 	error(message: string): void {
-		this.logger.error('{message}', {
-			message,
-		});
+		this.logger.error(escapeLogtapeMessage(message));
 	}
 
 	info(message: string): void {
-		this.logger.info('{message}', {
-			message,
-		});
+		this.logger.info(escapeLogtapeMessage(message));
 	}
 
 	warn(message: string): void {
-		this.logger.warn('{message}', {
-			message,
-		});
+		this.logger.warn(escapeLogtapeMessage(message));
 	}
 
 	warning(message: string): void {
-		this.logger.warning('{message}', {
-			message,
-		});
+		this.logger.warning(escapeLogtapeMessage(message));
 	}
+}
+
+function escapeLogtapeMessage(message: string): string {
+	return message.replaceAll('{', '\\{').replaceAll('}', '\\}');
 }

@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { Tiny } from '@edo-w/tiny';
 import { test, vi } from 'vitest';
-import { BackendBootstrapperFactory } from '#src/cli/app/backend/backend-bootstrapper-factory';
-import { EnvironmentService } from '#src/cli/app/environment/environment-service';
-import { SecretsBootstrapperFactory } from '#src/cli/app/secrets/secrets-bootstrapper-factory';
+import { BackendBootstrapperFactory } from '#src/app/backend/backend-bootstrapper-factory';
+import { EnvironmentService } from '#src/app/environment/environment-service';
+import { SecretsBootstrapperFactory } from '#src/app/secrets/secrets-bootstrapper-factory';
 import { createEnvBootstrapCommand, handleEnvBootstrapCommand } from '#src/cli/commands/env-bootstrap-command';
 import { runCommand } from '#test/helpers/command';
 import { createCommandContainer, createCommandScope } from '#test/helpers/command-container';
