@@ -13,6 +13,8 @@ import { KeyAgentService } from '#src/cli/app/key-agent/key-agent-service';
 import { KvService } from '#src/cli/app/kv/kv-service';
 import { KvSyncService } from '#src/cli/app/kv/kv-sync-service';
 import { LockService } from '#src/cli/app/lock/lock-service';
+import { NodeService } from '#src/cli/app/node/node-service';
+import { NodeSyncService } from '#src/cli/app/node/node-sync-service';
 import { KeyAgentSecretsService } from '#src/cli/app/secrets/key-agent-secrets-service';
 import { KmsSecretsProvider } from '#src/cli/app/secrets/kms-secrets-provider';
 import { PasswordSecretsProvider } from '#src/cli/app/secrets/password-secrets-provider';
@@ -54,6 +56,8 @@ test('createContainer resolves the CLI services and shared infrastructure', () =
 	assert.ok(scope.get(LockService) instanceof LockService);
 	assert.ok(scope.get(KvSyncService) instanceof KvSyncService);
 	assert.ok(scope.get(KvService) instanceof KvService);
+	assert.ok(scope.get(NodeSyncService) instanceof NodeSyncService);
+	assert.ok(scope.get(NodeService) instanceof NodeService);
 	assert.ok(scope.get(SecretsBootstrapperFactory) instanceof SecretsBootstrapperFactory);
 	assert.ok(scope.get(SshCaService) instanceof SshCaService);
 });

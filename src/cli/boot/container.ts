@@ -12,6 +12,8 @@ import { KeyAgentService } from '#src/cli/app/key-agent/key-agent-service';
 import { KvService } from '#src/cli/app/kv/kv-service';
 import { KvSyncService } from '#src/cli/app/kv/kv-sync-service';
 import { LockService } from '#src/cli/app/lock/lock-service';
+import { NodeService } from '#src/cli/app/node/node-service';
+import { NodeSyncService } from '#src/cli/app/node/node-sync-service';
 import { KeyAgentSecretsService } from '#src/cli/app/secrets/key-agent-secrets-service';
 import { KmsSecretsProvider } from '#src/cli/app/secrets/kms-secrets-provider';
 import { PasswordSecretsProvider } from '#src/cli/app/secrets/password-secrets-provider';
@@ -44,94 +46,37 @@ export function createContainer(options: CreateContainerOptions): Tiny {
 	container.addScopedFactory(KMSClient, () => {
 		return new KMSClient({});
 	});
-	container.addScopedFactory(EnvironmentService, (t) => {
-		const vfs = t.get(Vfs);
-		const configService = t.get(ConfigService);
-		const stateService = t.get(StateService);
-
-		return new EnvironmentService(vfs, configService, stateService);
-	});
+	container.addScopedClass(EnvironmentService, [Vfs, ConfigService, StateService]);
 	container.addScopedFactory(BackendFactory, (t) => {
 		return new BackendFactory(t);
 	});
 	container.addScopedFactory(BackendBootstrapperFactory, (t) => {
 		return new BackendBootstrapperFactory(t);
 	});
-	container.addScopedFactory(PasswordSecretsProvider, (t) => {
-		const backendFactory = t.get(BackendFactory);
-
-		return new PasswordSecretsProvider(backendFactory);
-	});
-	container.addScopedFactory(KmsSecretsProvider, (t) => {
-		const backendFactory = t.get(BackendFactory);
-		const kmsClient = t.get(KMSClient);
-
-		return new KmsSecretsProvider(backendFactory, kmsClient);
-	});
+	container.addScopedClass(PasswordSecretsProvider, [BackendFactory]);
+	container.addScopedClass(KmsSecretsProvider, [BackendFactory, KMSClient]);
 	container.addScopedFactory(SecretsProviderFactory, (t) => {
 		return new SecretsProviderFactory(t);
 	});
-	container.addScopedFactory(KeyAgentManager, (t) => {
-		const stateService = t.get(StateService);
-
-		return new KeyAgentManager(stateService);
-	});
-	container.addScopedFactory(KeyAgentService, (t) => {
-		const environmentService = t.get(EnvironmentService);
-		const secretsProviderFactory = t.get(SecretsProviderFactory);
-
-		return new KeyAgentService(environmentService, secretsProviderFactory);
-	});
-	container.addScopedFactory(KeyAgentServer, (t) => {
-		const stateService = t.get(StateService);
-		const keyAgentService = t.get(KeyAgentService);
-
-		return new KeyAgentServer(stateService, keyAgentService);
-	});
-	container.addScopedFactory(KeyAgentSecretsService, (t) => {
-		const keyAgentManager = t.get(KeyAgentManager);
-
-		return new KeyAgentSecretsService(keyAgentManager);
-	});
+	container.addScopedClass(KeyAgentManager, [StateService]);
+	container.addScopedClass(KeyAgentService, [EnvironmentService, SecretsProviderFactory]);
+	container.addScopedClass(KeyAgentServer, [StateService, KeyAgentService]);
+	container.addScopedClass(KeyAgentSecretsService, [KeyAgentManager]);
 	container.addScopedFactory(ISecretsService, (t) => {
 		const keyAgentSecretsService = t.get(KeyAgentSecretsService);
 
 		return keyAgentSecretsService;
 	});
 	container.addSingletonClass(Tui, []);
-	container.addScopedFactory(LockService, (t) => {
-		const backendFactory = t.get(BackendFactory);
-
-		return new LockService(backendFactory);
-	});
-	container.addScopedFactory(KvSyncService, (t) => {
-		const vfs = t.get(Vfs);
-		const configService = t.get(ConfigService);
-		const backendFactory = t.get(BackendFactory);
-		const lockService = t.get(LockService);
-
-		return new KvSyncService(vfs, configService, backendFactory, lockService);
-	});
-	container.addScopedFactory(KvService, (t) => {
-		const vfs = t.get(Vfs);
-		const configService = t.get(ConfigService);
-		const kvSyncService = t.get(KvSyncService);
-		const secretsService = t.get(ISecretsService);
-
-		return new KvService(vfs, configService, kvSyncService, secretsService);
-	});
+	container.addScopedClass(LockService, [BackendFactory]);
+	container.addScopedClass(KvSyncService, [Vfs, ConfigService, BackendFactory, LockService]);
+	container.addScopedClass(KvService, [Vfs, ConfigService, KvSyncService, ISecretsService]);
+	container.addScopedClass(NodeSyncService, [Vfs, ConfigService, BackendFactory, LockService]);
+	container.addScopedClass(NodeService, [Vfs, ConfigService, NodeSyncService]);
 	container.addScopedFactory(SecretsBootstrapperFactory, (t) => {
 		return new SecretsBootstrapperFactory(t);
 	});
-	container.addScopedFactory(SshCaService, (t) => {
-		const vfs = t.get(Vfs);
-		const configService = t.get(ConfigService);
-		const backendFactory = t.get(BackendFactory);
-		const secretsService = t.get(ISecretsService);
-		const sshKeygen = t.get(SshKeygen);
-
-		return new SshCaService(vfs, configService, backendFactory, secretsService, sshKeygen);
-	});
+	container.addScopedClass(SshCaService, [Vfs, ConfigService, BackendFactory, ISecretsService, SshKeygen]);
 
 	return container;
 }

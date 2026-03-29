@@ -107,6 +107,11 @@ class ExampleRecord {
   using `ReturnType<...>`.
 - Use library types directly instead of recreating local minimal interfaces for
   them.
+- When the codebase already exports a real class, interface, or type for a
+  dependency contract, import and use that exact symbol instead of recreating a
+  local lookalike interface near the consumer.
+- Do not shadow an existing service contract with a local interface that only
+  repeats the same methods. Reuse the source-of-truth type directly.
 - Avoid inline object type annotations for internal helpers and local
   functions when TypeScript can infer the shape clearly.
 - If an explicit object type is truly needed, define a separate `interface`

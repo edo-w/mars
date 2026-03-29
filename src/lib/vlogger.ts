@@ -32,5 +32,37 @@ export class VlogManager {
 export const vlogManager = new VlogManager();
 
 function defaultLoggerFactory(category: readonly string[]): VLogger {
-	return getLogger(category) as Logger;
+	return new LogtapeVLogger(getLogger(category));
+}
+
+export class LogtapeVLogger implements VLogger {
+	logger: Logger;
+
+	constructor(logger: Logger) {
+		this.logger = logger;
+	}
+
+	error(message: string): void {
+		this.logger.error('{message}', {
+			message,
+		});
+	}
+
+	info(message: string): void {
+		this.logger.info('{message}', {
+			message,
+		});
+	}
+
+	warn(message: string): void {
+		this.logger.warn('{message}', {
+			message,
+		});
+	}
+
+	warning(message: string): void {
+		this.logger.warning('{message}', {
+			message,
+		});
+	}
 }
