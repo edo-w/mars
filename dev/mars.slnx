@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/mars-core/">
+    <Project Path="mars-core/src/Mars.Core.csproj" />
+    <Project Path="mars-core/test/Mars.Core.Tests.csproj" />
+  </Folder>
+  <Folder Name="/mars-local/">
+    <Project Path="mars-local/src/Mars.Local.csproj" />
+    <Project Path="mars-local/test/Mars.Local.Tests.csproj" />
+  </Folder>
+  <Folder Name="/mars-cli/">
+    <Project Path="mars-cli/src/Mars.Cli.csproj" />
+    <Project Path="mars-cli/test/Mars.Cli.Tests.csproj" />
+  </Folder>
+</Solution>

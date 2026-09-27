@@ -122,6 +122,12 @@ class ExampleRecord {
 - Avoid dense inline transformations that are hard to scan.
 - When mapping or conversion has real logic, assign it to a local variable
   before returning.
+- Do not misuse `flatMap(...)` as a null-filter by returning `[]` or `[value]`
+  from each branch. Use explicit staged collection code instead:
+  map to `value | null`, filter out `null`, then return the named result.
+- Avoid returning large chained collection pipelines directly from `return`.
+  Prefer `const result = ...; return result;` so the transformation has a name
+  and the intent stays readable.
 - Break complex callsites into intermediate variables when that improves
   readability.
 - When a callsite needs non-trivial object construction before invoking another

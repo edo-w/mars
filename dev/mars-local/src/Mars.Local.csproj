@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Dapper.AOT</InterceptorsNamespaces>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Dapper" />
+    <PackageReference Include="Dapper.AOT" />
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" />
+    <PackageReference Include="SQLitePCLRaw.bundle_winsqlite3" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+    <PackageReference Include="SQLitePCLRaw.bundle_sqlite3" Condition="!$([MSBuild]::IsOSPlatform('Windows'))" />
+    <ProjectReference Include="../../mars-core/src/Mars.Core.csproj" />
+  </ItemGroup>
+</Project>
