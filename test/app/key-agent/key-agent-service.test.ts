@@ -3,9 +3,12 @@ import { test, vi } from 'vitest';
 import { type Environment, EnvironmentConfig } from '#src/app/environment/environment-shapes';
 import { KeyAgentService } from '#src/app/key-agent/key-agent-service';
 import {
+	KeyAgentClearAskpassRequest,
 	KeyAgentDecryptRequest,
 	KeyAgentEncryptRequest,
+	KeyAgentGetAskpassRequest,
 	KeyAgentPingRequest,
+	KeyAgentSetAskpassRequest,
 	KeyAgentShutdownRequest,
 } from '#src/app/key-agent/key-agent-shapes';
 import { EncryptedSecretRecord } from '#src/app/secrets/secrets-shapes';
@@ -79,6 +82,66 @@ test('KeyAgentService shutdown returns a shutdown response', () => {
 	);
 
 	assert.equal(response.type, 'shutdown');
+});
+
+test('KeyAgentService stores and clears askpass values in memory', () => {
+	const { service } = sut();
+	const setResponse = service.setAskpass(
+		new KeyAgentSetAskpassRequest({
+			password: 'secret',
+			token: 'token',
+			ttl_ms: 30_000,
+			type: 'set-askpass',
+		}),
+	);
+	const getResponse = service.getAskpass(
+		new KeyAgentGetAskpassRequest({
+			askpass_token: setResponse.askpass_token,
+			token: 'token',
+			type: 'get-askpass',
+		}),
+	);
+
+	assert.equal(getResponse.password, 'secret');
+	assert.throws(() => {
+		service.getAskpass(
+			new KeyAgentGetAskpassRequest({
+				askpass_token: setResponse.askpass_token,
+				token: 'token',
+				type: 'get-askpass',
+			}),
+		);
+	});
+});
+
+test('KeyAgentService clearAskpass removes a stored askpass value', () => {
+	const { service } = sut();
+	const setResponse = service.setAskpass(
+		new KeyAgentSetAskpassRequest({
+			password: 'secret',
+			token: 'token',
+			ttl_ms: 30_000,
+			type: 'set-askpass',
+		}),
+	);
+
+	service.clearAskpass(
+		new KeyAgentClearAskpassRequest({
+			askpass_token: setResponse.askpass_token,
+			token: 'token',
+			type: 'clear-askpass',
+		}),
+	);
+
+	assert.throws(() => {
+		service.getAskpass(
+			new KeyAgentGetAskpassRequest({
+				askpass_token: setResponse.askpass_token,
+				token: 'token',
+				type: 'get-askpass',
+			}),
+		);
+	});
 });
 
 test('KeyAgentService encrypt and decrypt round trip text for an environment', async () => {

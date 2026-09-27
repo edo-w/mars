@@ -9,6 +9,7 @@ import {
 	KeyAgentShutdownResponse,
 } from '#src/app/key-agent/key-agent-shapes';
 import type { KeyAgentState } from '#src/app/state/state-shapes';
+import { MockVTimer } from '#test/mocks/mock-vtimer';
 
 async function waitFor<T>(read: () => T | null, timeoutMs = 5000): Promise<T> {
 	const startedAt = Date.now();
@@ -76,7 +77,8 @@ function sut() {
 			});
 		}),
 	};
-	const server = new KeyAgentServer(stateService as never, keyAgentService as never);
+	const vtimer = new MockVTimer();
+	const server = new KeyAgentServer(stateService as never, keyAgentService as never, vtimer as never);
 
 	return {
 		clearKeyAgentIfMatches,
@@ -86,15 +88,14 @@ function sut() {
 		keyAgentService,
 		server,
 		setKeyAgent,
+		vtimer,
 	};
 }
 
 test('KeyAgentServer serves ping and shutdown requests over the key-agent socket', async () => {
 	const { clearKeyAgentIfMatches, getCurrentKeyAgent, keyAgentService, server, setKeyAgent } = sut();
 	const servePromise = server.serveAndWaitForClose();
-	const keyAgent = await waitFor(() => {
-		return getCurrentKeyAgent();
-	});
+	const keyAgent = await waitFor(getCurrentKeyAgent);
 	const client = new KeyAgentClient(keyAgent.socket);
 
 	client.setKeepAlive(true);
@@ -130,9 +131,7 @@ test('KeyAgentServer returns an error response when encrypt fails asynchronously
 	}) as never);
 
 	const servePromise = server.serveAndWaitForClose();
-	const keyAgent = await waitFor(() => {
-		return getCurrentKeyAgent();
-	});
+	const keyAgent = await waitFor(getCurrentKeyAgent);
 	const client = new KeyAgentClient(keyAgent.socket);
 
 	client.setKeepAlive(true);

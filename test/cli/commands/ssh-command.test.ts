@@ -9,6 +9,13 @@ test('createSshCommand builds the ssh command tree', () => {
 	assert.equal(command.name(), 'ssh');
 	assert.deepEqual(
 		command.commands.map((entry) => entry.name()),
-		['ca'],
+		['askpass', 'ca'],
+	);
+
+	const askpassCommand = command.commands.find((entry) => entry.name() === 'askpass');
+
+	assert.deepEqual(
+		askpassCommand?.commands.map((entry) => entry.name()),
+		['set', 'get', 'clear'],
 	);
 });

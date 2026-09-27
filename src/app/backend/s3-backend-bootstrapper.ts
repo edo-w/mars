@@ -129,19 +129,17 @@ export class S3BackendBootstrapper implements BackendBootstrapper {
 				}),
 			);
 			const objectKeys =
-				result.Contents?.flatMap((object) => {
+				result.Contents?.map((object) => {
 					const key = object.Key;
 
 					if (key === undefined) {
-						return [];
+						return null;
 					}
 
-					return [
-						{
-							Key: key,
-						},
-					];
-				}) ?? [];
+					return {
+						Key: key,
+					};
+				}).filter((object) => object !== null) ?? [];
 
 			if (objectKeys.length > 0) {
 				await this.s3Client.send(

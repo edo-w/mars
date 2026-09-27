@@ -4,11 +4,14 @@ import {
 	createKeyAgentState,
 	isRequestMessage,
 	KEY_AGENT_IDLE_TIMEOUT_MS,
+	KeyAgentClearAskpassRequest,
 	KeyAgentDecryptRequest,
 	KeyAgentEncryptRequest,
 	KeyAgentErrorResponse,
+	KeyAgentGetAskpassRequest,
 	KeyAgentPingRequest,
 	type KeyAgentResponse,
+	KeyAgentSetAskpassRequest,
 	KeyAgentShutdownRequest,
 } from '#src/app/key-agent/key-agent-shapes';
 import type { StateService } from '#src/app/state/state-service';
@@ -23,6 +26,7 @@ import { PromiseSignal } from '#src/lib/promise-signal';
 import { isMissingPathError } from '#src/lib/vfs';
 import type { VLogger } from '#src/lib/vlogger';
 import { vlogManager } from '#src/lib/vlogger';
+import type { VTimer } from '#src/lib/vtimer';
 
 export class KeyAgentServer {
 	closeSignal: PromiseSignal | null;
@@ -31,14 +35,16 @@ export class KeyAgentServer {
 	keyAgentService: KeyAgentService;
 	logger: VLogger;
 	stateService: StateService;
+	vtimer: VTimer;
 
-	constructor(stateService: StateService, keyAgentService: KeyAgentService) {
+	constructor(stateService: StateService, keyAgentService: KeyAgentService, vtimer: VTimer) {
 		this.closeSignal = null;
-		this.idleTimer = new IdleTimer(KEY_AGENT_IDLE_TIMEOUT_MS);
+		this.idleTimer = new IdleTimer(KEY_AGENT_IDLE_TIMEOUT_MS, vtimer);
 		this.jsonRpcServer = null;
 		this.keyAgentService = keyAgentService;
 		this.logger = vlogManager.getLogger(['mars', 'key-agent', 'server']);
 		this.stateService = stateService;
+		this.vtimer = vtimer;
 		this.idleTimer.onTick(() => {
 			this.logger.info('key-agent server idle timeout reached');
 			void this.closeServer();
@@ -48,7 +54,7 @@ export class KeyAgentServer {
 	async serveAndWaitForClose(): Promise<void> {
 		const keyAgent = createKeyAgentState(process.pid);
 		const closeSignal = new PromiseSignal();
-		const jsonRpcServer = new JsonRpcServer(keyAgent.socket);
+		const jsonRpcServer = new JsonRpcServer(keyAgent.socket, this.vtimer);
 
 		this.closeSignal = closeSignal;
 		this.jsonRpcServer = jsonRpcServer;
@@ -111,6 +117,24 @@ export class KeyAgentServer {
 				const request = new KeyAgentShutdownRequest(requestFields);
 
 				return this.keyAgentService.shutdown(request);
+			}
+
+			if (requestMessage.type === 'set-askpass') {
+				const request = new KeyAgentSetAskpassRequest(requestFields);
+
+				return this.keyAgentService.setAskpass(request);
+			}
+
+			if (requestMessage.type === 'get-askpass') {
+				const request = new KeyAgentGetAskpassRequest(requestFields);
+
+				return this.keyAgentService.getAskpass(request);
+			}
+
+			if (requestMessage.type === 'clear-askpass') {
+				const request = new KeyAgentClearAskpassRequest(requestFields);
+
+				return this.keyAgentService.clearAskpass(request);
 			}
 
 			if (requestMessage.type === 'encrypt') {
@@ -186,12 +210,24 @@ function readKeyAgentRequestType(fields: unknown): KeyAgentErrorResponse['type']
 		return 'decrypt';
 	}
 
+	if (requestMessage.type === 'clear-askpass') {
+		return 'clear-askpass';
+	}
+
 	if (requestMessage.type === 'encrypt') {
 		return 'encrypt';
 	}
 
+	if (requestMessage.type === 'get-askpass') {
+		return 'get-askpass';
+	}
+
 	if (requestMessage.type === 'shutdown') {
 		return 'shutdown';
+	}
+
+	if (requestMessage.type === 'set-askpass') {
+		return 'set-askpass';
 	}
 
 	if (requestMessage.type === 'ping') {

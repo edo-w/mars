@@ -8,6 +8,7 @@ export const KEY_AGENT_STARTUP_DELAYS = [100, 200, 400, 800, 1600];
 export const KEY_AGENT_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 export const KEY_AGENT_REQUEST_TIMEOUT_MS = 1000;
 export const KEY_AGENT_SHUTDOWN_TIMEOUT_MS = 5 * 1000;
+export const KEY_AGENT_ASKPASS_TTL_MS = 30 * 1000;
 
 export class KeyAgentPingRequest {
 	static schema = z.object({
@@ -89,11 +90,77 @@ export class KeyAgentShutdownRequest {
 	}
 }
 
+export class KeyAgentSetAskpassRequest {
+	static schema = z.object({
+		password: z.string().min(1),
+		token: z.string().min(1),
+		ttl_ms: z.number().int().positive(),
+		type: z.literal('set-askpass'),
+	});
+
+	password: string;
+	token: string;
+	ttl_ms: number;
+	type: 'set-askpass';
+
+	constructor(fields: unknown) {
+		const parsed = KeyAgentSetAskpassRequest.schema.parse(fields);
+
+		this.password = parsed.password;
+		this.token = parsed.token;
+		this.ttl_ms = parsed.ttl_ms;
+		this.type = parsed.type;
+	}
+}
+
+export class KeyAgentGetAskpassRequest {
+	static schema = z.object({
+		askpass_token: z.string().min(1),
+		token: z.string().min(1),
+		type: z.literal('get-askpass'),
+	});
+
+	askpass_token: string;
+	token: string;
+	type: 'get-askpass';
+
+	constructor(fields: unknown) {
+		const parsed = KeyAgentGetAskpassRequest.schema.parse(fields);
+
+		this.askpass_token = parsed.askpass_token;
+		this.token = parsed.token;
+		this.type = parsed.type;
+	}
+}
+
+export class KeyAgentClearAskpassRequest {
+	static schema = z.object({
+		askpass_token: z.string().min(1),
+		token: z.string().min(1),
+		type: z.literal('clear-askpass'),
+	});
+
+	askpass_token: string;
+	token: string;
+	type: 'clear-askpass';
+
+	constructor(fields: unknown) {
+		const parsed = KeyAgentClearAskpassRequest.schema.parse(fields);
+
+		this.askpass_token = parsed.askpass_token;
+		this.token = parsed.token;
+		this.type = parsed.type;
+	}
+}
+
 export type KeyAgentRequest =
 	| KeyAgentPingRequest
 	| KeyAgentEncryptRequest
 	| KeyAgentDecryptRequest
-	| KeyAgentShutdownRequest;
+	| KeyAgentShutdownRequest
+	| KeyAgentSetAskpassRequest
+	| KeyAgentGetAskpassRequest
+	| KeyAgentClearAskpassRequest;
 
 export class KeyAgentPingResponse {
 	static schema = z.object({
@@ -169,16 +236,82 @@ export class KeyAgentShutdownResponse {
 	}
 }
 
+export class KeyAgentSetAskpassResponse {
+	static schema = z.object({
+		askpass_token: z.string().min(1),
+		ok: z.literal(true),
+		type: z.literal('set-askpass'),
+	});
+
+	askpass_token: string;
+	ok: true;
+	type: 'set-askpass';
+
+	constructor(fields: unknown) {
+		const parsed = KeyAgentSetAskpassResponse.schema.parse(fields);
+
+		this.askpass_token = parsed.askpass_token;
+		this.ok = parsed.ok;
+		this.type = parsed.type;
+	}
+}
+
+export class KeyAgentGetAskpassResponse {
+	static schema = z.object({
+		ok: z.literal(true),
+		password: z.string().min(1),
+		type: z.literal('get-askpass'),
+	});
+
+	ok: true;
+	password: string;
+	type: 'get-askpass';
+
+	constructor(fields: unknown) {
+		const parsed = KeyAgentGetAskpassResponse.schema.parse(fields);
+
+		this.ok = parsed.ok;
+		this.password = parsed.password;
+		this.type = parsed.type;
+	}
+}
+
+export class KeyAgentClearAskpassResponse {
+	static schema = z.object({
+		ok: z.literal(true),
+		type: z.literal('clear-askpass'),
+	});
+
+	ok: true;
+	type: 'clear-askpass';
+
+	constructor(fields: unknown) {
+		const parsed = KeyAgentClearAskpassResponse.schema.parse(fields);
+
+		this.ok = parsed.ok;
+		this.type = parsed.type;
+	}
+}
+
 export class KeyAgentErrorResponse {
 	static schema = z.object({
 		error: z.string().min(1),
 		ok: z.literal(false),
-		type: z.enum(['decrypt', 'encrypt', 'ping', 'shutdown', 'unknown']),
+		type: z.enum([
+			'clear-askpass',
+			'decrypt',
+			'encrypt',
+			'get-askpass',
+			'ping',
+			'set-askpass',
+			'shutdown',
+			'unknown',
+		]),
 	});
 
 	error: string;
 	ok: false;
-	type: 'decrypt' | 'encrypt' | 'ping' | 'shutdown' | 'unknown';
+	type: 'clear-askpass' | 'decrypt' | 'encrypt' | 'get-askpass' | 'ping' | 'set-askpass' | 'shutdown' | 'unknown';
 
 	constructor(fields: unknown) {
 		const parsed = KeyAgentErrorResponse.schema.parse(fields);
@@ -194,6 +327,9 @@ export type KeyAgentResponse =
 	| KeyAgentEncryptResponse
 	| KeyAgentDecryptResponse
 	| KeyAgentShutdownResponse
+	| KeyAgentSetAskpassResponse
+	| KeyAgentGetAskpassResponse
+	| KeyAgentClearAskpassResponse
 	| KeyAgentErrorResponse;
 
 export interface KeyAgentShowRunningResult {

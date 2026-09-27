@@ -13,6 +13,7 @@ import { stringify } from 'yaml';
 import { BackendFactory } from '#src/app/backend/backend-factory';
 import { ConfigService } from '#src/app/config/config-service';
 import { EnvironmentService } from '#src/app/environment/environment-service';
+import { KeyAgentManager } from '#src/app/key-agent/key-agent-manager';
 import { ISecretsService } from '#src/app/secrets/secrets-service';
 import { EncryptedSecretRecord } from '#src/app/secrets/secrets-shapes';
 import { SshCaService } from '#src/app/ssh-ca/ssh-ca-service';
@@ -29,11 +30,16 @@ function sut() {
 		region: 'us-east-1',
 	});
 	const sshKeygen = new MockSshKeygen(vfs);
+	const keyAgentManager = {
+		clearAskpass: vi.fn(async () => {}),
+		setAskpass: vi.fn(async () => 'askpass-token'),
+	};
 	const secretsService = new MockSecretsService();
 	const t = new Tiny();
 
 	t.addInstance(Vfs, vfs as Vfs);
-	t.addInstance(SshKeygen, sshKeygen as SshKeygen);
+	t.addInstance(SshKeygen, sshKeygen as unknown as SshKeygen);
+	t.addInstance(KeyAgentManager, keyAgentManager as unknown as KeyAgentManager);
 	t.addInstance(ISecretsService, secretsService as never);
 	t.addSingletonClass(ConfigService, [Vfs]);
 	t.addScopedClass(StateService, [Vfs, ConfigService]);
@@ -50,9 +56,17 @@ function sut() {
 
 	const configService = t.get(ConfigService);
 	const backendFactory = new BackendFactory(t);
-	const service = new SshCaService(vfs, configService, backendFactory, secretsService, sshKeygen as SshKeygen);
+	const service = new SshCaService(
+		vfs,
+		configService,
+		backendFactory,
+		keyAgentManager as unknown as KeyAgentManager,
+		secretsService,
+		sshKeygen as unknown as SshKeygen,
+	);
 
 	return {
+		keyAgentManager,
 		secretsService,
 		service,
 		s3Client,
@@ -165,7 +179,7 @@ test('SshCaService treats an existing local keypair as already existing', async 
 });
 
 test('SshCaService creates an ssh ca and uploads the keypair and password through the backend', async () => {
-	const { service, s3Client, secretsService, sshKeygen, t, vfs } = sut();
+	const { keyAgentManager, service, s3Client, secretsService, sshKeygen, t, vfs } = sut();
 	const send = vi.spyOn(s3Client, 'send');
 	const createDate = new Date('2026-03-22T12:00:00.000Z');
 	const marsConfig = toMarsConfigText();
@@ -242,6 +256,7 @@ test('SshCaService creates an ssh ca and uploads the keypair and password throug
 	assert.notEqual(sshKeygen.lastPassphrase, null);
 	assert.equal(secretsService.encryptBytesCalls.length, 1);
 	assert.equal(password, JSON.stringify(secretsService.lastEncryptedSecret));
+	assert.equal(keyAgentManager.setAskpass.mock.calls.length, 0);
 });
 
 test('SshCaService stores durable ssh ca files in the local backend when configured', async () => {
@@ -584,6 +599,48 @@ test('SshCaService remove only deletes local files for the resolved environment'
 	assert.equal(removed, true);
 	assert.equal(devPrivateKey, undefined);
 	assert.equal(testPrivateKey, 'TEST PRIVATE KEY');
+});
+
+test('SshCaService issueClientIdentity uses a key-agent askpass token and clears it after signing', async () => {
+	const { keyAgentManager, service, s3Client, sshKeygen, t, vfs } = sut();
+	const send = vi.spyOn(s3Client, 'send');
+	const marsConfig = toMarsConfigText({
+		backend: {
+			local: {},
+		},
+	});
+	const environmentFile = stringify({
+		name: 'dev',
+		namespace: 'gl',
+		aws_account_id: '10000',
+		aws_region: 'us-east-1',
+	});
+
+	vfs.setTextFile('mars.config.json', marsConfig);
+	vfs.setTextFile('infra/envs/dev/environment.yml', environmentFile);
+	vfs.setTextFile('.mars/local/env/gl-dev/ssh/ca/default_ca_ed25519.key', 'CA PRIVATE KEY');
+	vfs.setTextFile('.mars/local/env/gl-dev/ssh/ca/default_ca_ed25519.pub', 'CA PUBLIC KEY');
+	vfs.setTextFile(
+		'.mars/local/env/gl-dev/ssh/ca/default_ca_password.enc',
+		JSON.stringify(
+			new EncryptedSecretRecord({
+				algorithm: 'AES-GCM',
+				ciphertext: 'cGFzcw==',
+				iv: 'aXY=',
+			}),
+		),
+	);
+
+	const environmentService = t.get(EnvironmentService);
+	const environment = await environmentService.get('gl-dev');
+	const identity = environment === null ? null : await service.issueClientIdentity(environment, 'default', 'run-id');
+
+	assert.equal(identity?.certificate, 'CERTIFICATE');
+	assert.equal(identity?.private_key, 'PRIVATE KEY');
+	assert.equal(keyAgentManager.setAskpass.mock.calls.length, 1);
+	assert.equal(keyAgentManager.clearAskpass.mock.calls.length, 1);
+	assert.equal(sshKeygen.lastAskpassToken, 'askpass-token');
+	assert.equal(send.mock.calls.length, 0);
 });
 
 function createObjectBody(contents: string) {

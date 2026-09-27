@@ -1,12 +1,17 @@
+import type { VTimer } from '#src/lib/vtimer';
+import { VTimer as RealVTimer } from '#src/lib/vtimer';
+
 export class IdleTimer {
 	callback: (() => void) | null;
 	delayMs: number;
 	timer: NodeJS.Timeout | null;
+	vtimer: VTimer;
 
-	constructor(delayMs: number) {
+	constructor(delayMs: number, vtimer: VTimer = new RealVTimer()) {
 		this.callback = null;
 		this.delayMs = delayMs;
 		this.timer = null;
+		this.vtimer = vtimer;
 	}
 
 	onTick(callback: () => void): void {
@@ -25,7 +30,7 @@ export class IdleTimer {
 			throw new Error('idle timer callback not configured');
 		}
 
-		this.timer = setTimeout(() => {
+		this.timer = this.vtimer.setTimeout(() => {
 			this.timer = null;
 			callback();
 		}, this.delayMs);
@@ -36,7 +41,7 @@ export class IdleTimer {
 			return;
 		}
 
-		clearTimeout(this.timer);
+		this.vtimer.clearTimeout(this.timer);
 		this.timer = null;
 	}
 }

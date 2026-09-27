@@ -6,13 +6,19 @@ import {
 	createSocketPath,
 	isRequestMessage,
 	isResponseMessage,
+	KeyAgentClearAskpassRequest,
+	KeyAgentClearAskpassResponse,
 	KeyAgentDecryptRequest,
 	KeyAgentDecryptResponse,
 	KeyAgentEncryptRequest,
 	KeyAgentEncryptResponse,
 	KeyAgentErrorResponse,
+	KeyAgentGetAskpassRequest,
+	KeyAgentGetAskpassResponse,
 	KeyAgentPingRequest,
 	KeyAgentPingResponse,
+	KeyAgentSetAskpassRequest,
+	KeyAgentSetAskpassResponse,
 	KeyAgentShutdownRequest,
 	KeyAgentShutdownResponse,
 } from '#src/app/key-agent/key-agent-shapes';
@@ -121,6 +127,37 @@ test('KeyAgentShutdownRequest rejects invalid input', () => {
 	});
 });
 
+test('KeyAgentSetAskpassRequest constructs from valid input', () => {
+	const request = new KeyAgentSetAskpassRequest({
+		password: 'secret',
+		token: 'token',
+		ttl_ms: 1000,
+		type: 'set-askpass',
+	});
+
+	assert.equal(request.type, 'set-askpass');
+});
+
+test('KeyAgentGetAskpassRequest constructs from valid input', () => {
+	const request = new KeyAgentGetAskpassRequest({
+		askpass_token: 'askpass',
+		token: 'token',
+		type: 'get-askpass',
+	});
+
+	assert.equal(request.type, 'get-askpass');
+});
+
+test('KeyAgentClearAskpassRequest constructs from valid input', () => {
+	const request = new KeyAgentClearAskpassRequest({
+		askpass_token: 'askpass',
+		token: 'token',
+		type: 'clear-askpass',
+	});
+
+	assert.equal(request.type, 'clear-askpass');
+});
+
 test('KeyAgentPingResponse constructs from valid input', () => {
 	const response = new KeyAgentPingResponse({
 		ok: true,
@@ -203,6 +240,35 @@ test('KeyAgentShutdownResponse rejects invalid input', () => {
 			type: 'shutdown',
 		});
 	});
+});
+
+test('KeyAgentSetAskpassResponse constructs from valid input', () => {
+	const response = new KeyAgentSetAskpassResponse({
+		askpass_token: 'askpass',
+		ok: true,
+		type: 'set-askpass',
+	});
+
+	assert.equal(response.type, 'set-askpass');
+});
+
+test('KeyAgentGetAskpassResponse constructs from valid input', () => {
+	const response = new KeyAgentGetAskpassResponse({
+		ok: true,
+		password: 'secret',
+		type: 'get-askpass',
+	});
+
+	assert.equal(response.type, 'get-askpass');
+});
+
+test('KeyAgentClearAskpassResponse constructs from valid input', () => {
+	const response = new KeyAgentClearAskpassResponse({
+		ok: true,
+		type: 'clear-askpass',
+	});
+
+	assert.equal(response.type, 'clear-askpass');
 });
 
 test('KeyAgentErrorResponse constructs from valid input', () => {

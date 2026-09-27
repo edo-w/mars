@@ -2,7 +2,10 @@ import path from 'node:path';
 import type { BackendFactory } from '#src/app/backend/backend-factory';
 import type { ConfigService } from '#src/app/config/config-service';
 import type { Environment } from '#src/app/environment/environment-shapes';
+import type { KeyAgentManager } from '#src/app/key-agent/key-agent-manager';
+import type { PlaybookSshIdentity } from '#src/app/playbook/playbook-models';
 import type { SecretsService } from '#src/app/secrets/secrets-service';
+import { EncryptedSecretRecord } from '#src/app/secrets/secrets-shapes';
 import type {
 	CreateSshCaResult,
 	DestroySshCaResult,
@@ -27,6 +30,7 @@ import type { Vfs } from '#src/lib/vfs';
 export class SshCaService {
 	backendFactory: BackendFactory;
 	configService: ConfigService;
+	keyAgentManager: KeyAgentManager;
 	secretsService: SecretsService;
 	sshKeygen: SshKeygen;
 	vfs: Vfs;
@@ -35,11 +39,13 @@ export class SshCaService {
 		vfs: Vfs,
 		configService: ConfigService,
 		backendFactory: BackendFactory,
+		keyAgentManager: KeyAgentManager,
 		secretsService: SecretsService,
 		sshKeygen: SshKeygen,
 	) {
 		this.backendFactory = backendFactory;
 		this.configService = configService;
+		this.keyAgentManager = keyAgentManager;
 		this.secretsService = secretsService;
 		this.sshKeygen = sshKeygen;
 		this.vfs = vfs;
@@ -218,6 +224,67 @@ export class SshCaService {
 				public_key: await backendService.getFilePath(environment, publicKeyPath),
 			},
 		};
+	}
+
+	async issueClientIdentity(
+		environment: Environment,
+		name: string,
+		certificateIdentity: string,
+	): Promise<PlaybookSshIdentity> {
+		const pullResult = await this.pull(environment, name);
+
+		if (pullResult.kind === 'corrupted') {
+			throw new Error(`ssh ca "${name}" is corrupted`);
+		}
+
+		if (pullResult.kind === 'not_found') {
+			throw new Error(`ssh ca "${name}" not found`);
+		}
+
+		const backendService = await this.backendFactory.create();
+		const passwordPath = createSshCaPasswordBackendPath(environment.id, name);
+		const encryptedPasswordFields = JSON.parse(await backendService.readTextFile(environment, passwordPath));
+		const encryptedPassword = new EncryptedSecretRecord(encryptedPasswordFields);
+		const password = await this.secretsService.decryptText(environment, encryptedPassword);
+		const config = await this.configService.get();
+		const runKeyPath = path.posix.join(
+			config.work_path,
+			'env',
+			environment.id,
+			'playbook',
+			`${crypto.randomUUID()}.key`,
+		);
+		const runPublicKeyPath = `${runKeyPath}.pub`;
+		const runCertificatePath = `${runKeyPath}-cert.pub`;
+		const localPaths = await this.getLocalPaths(environment.id, name);
+		const askpassToken = await this.keyAgentManager.setAskpass(password);
+
+		await this.sshKeygen.generateKeyPair({
+			comment: certificateIdentity,
+			passphrase: '',
+			privateKeyPath: this.vfs.resolve(runKeyPath),
+		});
+
+		try {
+			await this.sshKeygen.issueCertificate({
+				caPrivateKeyPath: this.vfs.resolve(localPaths.privateKeyPath),
+				certificateIdentity,
+				askpass_token: askpassToken,
+				principals: ['mars'],
+				publicKeyPath: this.vfs.resolve(runPublicKeyPath),
+				validity: '+5m',
+			});
+
+			return {
+				certificate: await this.vfs.readTextFile(runCertificatePath),
+				private_key: await this.vfs.readTextFile(runKeyPath),
+			};
+		} finally {
+			await this.keyAgentManager.clearAskpass(askpassToken);
+			await this.vfs.removeFile(runKeyPath);
+			await this.vfs.removeFile(runPublicKeyPath);
+			await this.vfs.removeFile(runCertificatePath);
+		}
 	}
 
 	async remove(environment: Environment, name: string): Promise<boolean> {

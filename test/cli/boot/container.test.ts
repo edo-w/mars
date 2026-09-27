@@ -7,6 +7,7 @@ import { BackendFactory } from '#src/app/backend/backend-factory';
 import { ConfigService } from '#src/app/config/config-service';
 import { EnvironmentService } from '#src/app/environment/environment-service';
 import { InitService } from '#src/app/init/init-service';
+import { KeyAgentClientFactory } from '#src/app/key-agent/key-agent-client-factory';
 import { KeyAgentManager } from '#src/app/key-agent/key-agent-manager';
 import { KeyAgentServer } from '#src/app/key-agent/key-agent-server';
 import { KeyAgentService } from '#src/app/key-agent/key-agent-service';
@@ -15,6 +16,10 @@ import { KvSyncService } from '#src/app/kv/kv-sync-service';
 import { LockService } from '#src/app/lock/lock-service';
 import { NodeService } from '#src/app/node/node-service';
 import { NodeSyncService } from '#src/app/node/node-sync-service';
+import { PlaybookService } from '#src/app/playbook/playbook-service';
+import { PlaybookSshClientFactory } from '#src/app/playbook/playbook-ssh-client';
+import { PlaybookTaskHandlerFactory } from '#src/app/playbook/playbook-task-handler-factory';
+import { PlaybookTaskRegistry } from '#src/app/playbook/playbook-task-registry';
 import { KeyAgentSecretsService } from '#src/app/secrets/key-agent-secrets-service';
 import { KmsSecretsProvider } from '#src/app/secrets/kms-secrets-provider';
 import { PasswordSecretsProvider } from '#src/app/secrets/password-secrets-provider';
@@ -27,6 +32,8 @@ import { createContainer } from '#src/cli/boot/container';
 import { SshKeygen } from '#src/lib/ssh';
 import { Tui } from '#src/lib/tui';
 import { Vfs } from '#src/lib/vfs';
+import { VProcess } from '#src/lib/vprocess';
+import { VTimer } from '#src/lib/vtimer';
 
 test('createContainer resolves the CLI services and shared infrastructure', () => {
 	const container = createContainer({
@@ -35,6 +42,7 @@ test('createContainer resolves the CLI services and shared infrastructure', () =
 	const scope = container.createScope();
 
 	assert.equal(scope.get(Vfs).cwd, '/repo');
+	assert.ok(scope.get(VProcess) instanceof VProcess);
 	assert.ok(scope.get(ConfigService) instanceof ConfigService);
 	assert.ok(scope.get(InitService) instanceof InitService);
 	assert.ok(scope.get(StateService) instanceof StateService);
@@ -47,17 +55,23 @@ test('createContainer resolves the CLI services and shared infrastructure', () =
 	assert.ok(scope.get(PasswordSecretsProvider) instanceof PasswordSecretsProvider);
 	assert.ok(scope.get(KmsSecretsProvider) instanceof KmsSecretsProvider);
 	assert.ok(scope.get(SecretsProviderFactory) instanceof SecretsProviderFactory);
+	assert.ok(scope.get(KeyAgentClientFactory) instanceof KeyAgentClientFactory);
 	assert.ok(scope.get(KeyAgentManager) instanceof KeyAgentManager);
 	assert.ok(scope.get(KeyAgentService) instanceof KeyAgentService);
 	assert.ok(scope.get(KeyAgentServer) instanceof KeyAgentServer);
 	assert.ok(scope.get(KeyAgentSecretsService) instanceof KeyAgentSecretsService);
 	assert.notEqual(scope.get(ISecretsService), null);
 	assert.ok(scope.get(Tui) instanceof Tui);
+	assert.ok(scope.get(VTimer) instanceof VTimer);
 	assert.ok(scope.get(LockService) instanceof LockService);
 	assert.ok(scope.get(KvSyncService) instanceof KvSyncService);
 	assert.ok(scope.get(KvService) instanceof KvService);
 	assert.ok(scope.get(NodeSyncService) instanceof NodeSyncService);
 	assert.ok(scope.get(NodeService) instanceof NodeService);
+	assert.ok(scope.get(PlaybookTaskRegistry) instanceof PlaybookTaskRegistry);
+	assert.ok(scope.get(PlaybookSshClientFactory) instanceof PlaybookSshClientFactory);
+	assert.ok(scope.get(PlaybookTaskHandlerFactory) instanceof PlaybookTaskHandlerFactory);
+	assert.ok(scope.get(PlaybookService) instanceof PlaybookService);
 	assert.ok(scope.get(SecretsBootstrapperFactory) instanceof SecretsBootstrapperFactory);
 	assert.ok(scope.get(SshCaService) instanceof SshCaService);
 });

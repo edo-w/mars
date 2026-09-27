@@ -4,11 +4,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'vitest';
 import { SshKeygen } from '#src/lib/ssh';
+import { VProcess } from '#src/lib/vprocess';
 
 test('SshKeygen generates an ed25519 keypair into the target path', async () => {
 	const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mars-ssh-keygen-'));
 	const privateKeyPath = path.join(tempDir, 'test_ca_ed25519.key');
-	const sshKeygen = new SshKeygen();
+	const sshKeygen = new SshKeygen(new VProcess());
 
 	try {
 		await sshKeygen.generateKeyPair({

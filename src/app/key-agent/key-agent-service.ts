@@ -1,11 +1,17 @@
 import type { EnvironmentService } from '#src/app/environment/environment-service';
 import {
+	type KeyAgentClearAskpassRequest,
+	KeyAgentClearAskpassResponse,
 	type KeyAgentDecryptRequest,
 	KeyAgentDecryptResponse,
 	type KeyAgentEncryptRequest,
 	KeyAgentEncryptResponse,
+	type KeyAgentGetAskpassRequest,
+	KeyAgentGetAskpassResponse,
 	type KeyAgentPingRequest,
 	KeyAgentPingResponse,
+	type KeyAgentSetAskpassRequest,
+	KeyAgentSetAskpassResponse,
 	type KeyAgentShutdownRequest,
 	KeyAgentShutdownResponse,
 } from '#src/app/key-agent/key-agent-shapes';
@@ -14,14 +20,26 @@ import type { SecretsProviderFactory } from '#src/app/secrets/secrets-provider-f
 import { fromBase64, toBase64 } from '#src/app/secrets/secrets-shapes';
 
 export class KeyAgentService {
+	askpassEntries: Map<string, { expire_at: number; password: string }>;
 	dataKeys: Map<string, Uint8Array>;
 	environmentService: EnvironmentService;
 	secretsProviderFactory: SecretsProviderFactory;
 
 	constructor(environmentService: EnvironmentService, secretsProviderFactory: SecretsProviderFactory) {
+		this.askpassEntries = new Map();
 		this.dataKeys = new Map();
 		this.environmentService = environmentService;
 		this.secretsProviderFactory = secretsProviderFactory;
+	}
+
+	clearAskpass(request: KeyAgentClearAskpassRequest): KeyAgentClearAskpassResponse {
+		this.cleanupAskpassEntries();
+		this.askpassEntries.delete(request.askpass_token);
+
+		return new KeyAgentClearAskpassResponse({
+			ok: true,
+			type: 'clear-askpass',
+		});
 	}
 
 	async decrypt(request: KeyAgentDecryptRequest): Promise<KeyAgentDecryptResponse> {
@@ -38,6 +56,24 @@ export class KeyAgentService {
 			ok: true,
 			plaintext: toBase64(plaintext),
 			type: 'decrypt',
+		});
+	}
+
+	getAskpass(request: KeyAgentGetAskpassRequest): KeyAgentGetAskpassResponse {
+		this.cleanupAskpassEntries();
+
+		const askpassEntry = this.askpassEntries.get(request.askpass_token);
+
+		if (askpassEntry === undefined) {
+			throw new Error('askpass token not found');
+		}
+
+		this.askpassEntries.delete(request.askpass_token);
+
+		return new KeyAgentGetAskpassResponse({
+			ok: true,
+			password: askpassEntry.password,
+			type: 'get-askpass',
 		});
 	}
 
@@ -70,6 +106,33 @@ export class KeyAgentService {
 			ok: true,
 			type: 'shutdown',
 		});
+	}
+
+	setAskpass(request: KeyAgentSetAskpassRequest): KeyAgentSetAskpassResponse {
+		this.cleanupAskpassEntries();
+
+		const askpassToken = crypto.randomUUID();
+
+		this.askpassEntries.set(askpassToken, {
+			expire_at: Date.now() + request.ttl_ms,
+			password: request.password,
+		});
+
+		return new KeyAgentSetAskpassResponse({
+			askpass_token: askpassToken,
+			ok: true,
+			type: 'set-askpass',
+		});
+	}
+
+	private cleanupAskpassEntries(): void {
+		const now = Date.now();
+
+		for (const [token, entry] of this.askpassEntries.entries()) {
+			if (entry.expire_at <= now) {
+				this.askpassEntries.delete(token);
+			}
+		}
 	}
 
 	private async getDataKey(environmentId: string): Promise<Uint8Array> {

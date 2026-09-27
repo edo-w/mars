@@ -90,11 +90,11 @@ export class S3BackendService implements BackendService {
 		let directoryNames: string[] = [];
 
 		if (result.Contents !== undefined) {
-			objectNames = result.Contents.flatMap((object) => {
+			objectNames = result.Contents.map((object) => {
 				const key = object.Key;
 
 				if (key === undefined) {
-					return [];
+					return null;
 				}
 
 				const keyIsPrefix = key === prefix;
@@ -102,28 +102,28 @@ export class S3BackendService implements BackendService {
 				const shouldInclude = !keyIsPrefix && keyIsInPrefix;
 
 				if (!shouldInclude) {
-					return [];
+					return null;
 				}
 
 				const entryName = path.posix.basename(key);
 				const entryNameIsEmpty = entryName.length === 0;
 
-				return entryNameIsEmpty ? [] : [entryName];
-			});
+				return entryNameIsEmpty ? null : entryName;
+			}).filter((entryName) => entryName !== null);
 		}
 
 		if (result.CommonPrefixes !== undefined) {
-			directoryNames = result.CommonPrefixes.flatMap((directory) => {
+			directoryNames = result.CommonPrefixes.map((directory) => {
 				const directoryPrefix = directory.Prefix;
 
 				if (directoryPrefix === undefined) {
-					return [];
+					return null;
 				}
 
 				const prefixIsInPath = directoryPrefix.startsWith(prefix);
 
 				if (!prefixIsInPath) {
-					return [];
+					return null;
 				}
 
 				const directoryHasTrailingSlash = directoryPrefix.endsWith('/');
@@ -131,8 +131,8 @@ export class S3BackendService implements BackendService {
 				const entryName = path.posix.basename(normalizedPrefix);
 				const entryNameIsEmpty = entryName.length === 0;
 
-				return entryNameIsEmpty ? [] : [entryName];
-			});
+				return entryNameIsEmpty ? null : entryName;
+			}).filter((entryName) => entryName !== null);
 		}
 
 		for (const entryName of [...objectNames, ...directoryNames]) {

@@ -3,6 +3,8 @@ import { MessageEnvelope } from '#src/lib/json-rpc/json-rpc-shapes';
 import { PromiseSignal } from '#src/lib/promise-signal';
 import type { VLogger } from '#src/lib/vlogger';
 import { vlogManager } from '#src/lib/vlogger';
+import type { VTimer } from '#src/lib/vtimer';
+import { VTimer as RealVTimer } from '#src/lib/vtimer';
 
 const JSON_RPC_REQUEST_TIMEOUT_MS = 5 * 1000;
 
@@ -22,8 +24,9 @@ export class JsonRpcClient {
 	socket: net.Socket | null;
 	socketPath: string;
 	socketPromise: Promise<net.Socket> | null;
+	vtimer: VTimer;
 
-	constructor(socketPath: string) {
+	constructor(socketPath: string, vtimer: VTimer = new RealVTimer()) {
 		this.closeByClient = false;
 		this.dataBuffer = '';
 		this.keepAlive = false;
@@ -33,6 +36,7 @@ export class JsonRpcClient {
 		this.socket = null;
 		this.socketPath = socketPath;
 		this.socketPromise = null;
+		this.vtimer = vtimer;
 	}
 
 	async close(): Promise<void> {
@@ -59,7 +63,7 @@ export class JsonRpcClient {
 		const socket = await this.ensureConnected();
 		const id = this.nextId;
 		const signal = new PromiseSignal();
-		const timeout = setTimeout(() => {
+		const timeout = this.vtimer.setTimeout(() => {
 			this.pending.delete(id);
 			signal.reject(new Error('json-rpc request timeout'));
 		}, JSON_RPC_REQUEST_TIMEOUT_MS);
@@ -98,7 +102,7 @@ export class JsonRpcClient {
 
 	private clearPending(error: Error): void {
 		for (const [id, pendingRequest] of this.pending) {
-			clearTimeout(pendingRequest.timeout);
+			this.vtimer.clearTimeout(pendingRequest.timeout);
 			pendingRequest.signal.reject(error);
 			this.pending.delete(id);
 		}
@@ -200,7 +204,7 @@ export class JsonRpcClient {
 				continue;
 			}
 
-			clearTimeout(pendingRequest.timeout);
+			this.vtimer.clearTimeout(pendingRequest.timeout);
 			this.pending.delete(envelope.id);
 			pendingRequest.response = envelope.message;
 			pendingRequest.signal.resolve();

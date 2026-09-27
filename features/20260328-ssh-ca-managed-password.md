@@ -188,6 +188,25 @@ That means:
 This feature depends on the current binary-first secrets API and uses it as the
 standard path for SSH CA password storage.
 
+When Mars later needs to supply that password to `ssh-keygen`, it should not
+write the password itself to the filesystem. The password should be staged in
+key-agent memory behind a one-time token and resolved through:
+
+- `mars ssh askpass get <token>`
+
+Rules for that bridge:
+
+- token lives only in key-agent memory
+- token TTL is 30 seconds
+- token is cleared automatically on first successful read
+- Mars also exposes manual testing commands:
+  - `mars ssh askpass set <password> [--ttl <seconds>]`
+  - `mars ssh askpass clear <token>`
+- any temporary askpass launcher file may contain the command bridge only and
+  must never contain the password
+- the launcher flow must work in both Bun script mode and the compiled Mars
+  binary
+
 ## Existing SSH CAs
 
 Existing SSH CAs created before this feature may not have:

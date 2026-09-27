@@ -5,6 +5,7 @@ import { createInitCommand } from '#src/cli/commands/init-command';
 import { createKeyAgentCommand } from '#src/cli/commands/key-agent-command';
 import { createKvCommand } from '#src/cli/commands/kv-command';
 import { createNodeCommand } from '#src/cli/commands/node-command';
+import { createPlaybookCommand } from '#src/cli/commands/playbook-command';
 import { createSshCommand } from '#src/cli/commands/ssh-command';
 
 export function createProgram(container: Tiny): Command {
@@ -17,6 +18,7 @@ export function createProgram(container: Tiny): Command {
 	program.addCommand(createKeyAgentCommand(container));
 	program.addCommand(createKvCommand(container));
 	program.addCommand(createNodeCommand(container));
+	program.addCommand(createPlaybookCommand(container));
 	program.addCommand(createSshCommand(container));
 
 	return program;

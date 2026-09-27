@@ -205,8 +205,32 @@ export class NodeService {
 
 		const repo = await this.openRepo(environment);
 		const normalizedTags = tags.map((tag) => normalizeNodeTag(tag));
+		const result = repo.list(normalizedTags).map((item) => toListNodesResultItem(item));
 
-		return repo.list(normalizedTags).map((item) => toListNodesResultItem(item));
+		return result;
+	}
+
+	async listTargets(environment: Environment, tags: string[]): Promise<Array<{ node: NodeModel; tags: string[] }>> {
+		await this.nodeSyncService.ensureLocalState(environment);
+
+		const repo = await this.openRepo(environment);
+		const normalizedTags = tags.map((tag) => normalizeNodeTag(tag));
+		const nodeEntries = repo.list(normalizedTags);
+		const mappedEntries = nodeEntries.map((entry) => {
+			const node = repo.get(entry.id);
+
+			if (node === null) {
+				return null;
+			}
+
+			return {
+				node,
+				tags: repo.listTags(entry.id),
+			};
+		});
+		const result = mappedEntries.filter((entry) => entry !== null);
+
+		return result;
 	}
 
 	async listEvents(environment: Environment, nodeId: string | null): Promise<NodeEventModel[]> {

@@ -105,4 +105,14 @@ class MockKeyAgentManager implements KeyAgentManagerLike {
 			kind: 'not_running' as const,
 		};
 	}
+
+	async clearAskpass() {}
+
+	async getAskpass() {
+		return 'secret';
+	}
+
+	async setAskpass() {
+		return 'askpass-token';
+	}
 }

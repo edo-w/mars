@@ -7,6 +7,8 @@ import {
 } from '#src/lib/json-rpc/json-rpc-shapes';
 import type { VLogger } from '#src/lib/vlogger';
 import { vlogManager } from '#src/lib/vlogger';
+import type { VTimer } from '#src/lib/vtimer';
+import { VTimer as RealVTimer } from '#src/lib/vtimer';
 
 const JSON_RPC_SOCKET_CLOSE_GRACE_MS = 100;
 
@@ -19,8 +21,9 @@ export class JsonRpcServer {
 	socketIds: Map<net.Socket, number>;
 	socketPath: string;
 	sockets: Map<number, net.Socket>;
+	vtimer: VTimer;
 
-	constructor(socketPath: string) {
+	constructor(socketPath: string, vtimer: VTimer = new RealVTimer()) {
 		this.dataBuffers = new Map();
 		this.emitter = new EventEmitter();
 		this.logger = vlogManager.getLogger(['mars', 'json-rpc', 'server']);
@@ -29,6 +32,7 @@ export class JsonRpcServer {
 		this.socketIds = new Map();
 		this.socketPath = socketPath;
 		this.sockets = new Map();
+		this.vtimer = vtimer;
 	}
 
 	async close(): Promise<void> {
@@ -87,7 +91,7 @@ export class JsonRpcServer {
 			// client before shutdown. If the socket lingers, force close it so
 			// server.close() cannot hang waiting on a sticky connection.
 			socket.end();
-			setTimeout(() => {
+			this.vtimer.setTimeout(() => {
 				if (!socket.destroyed) {
 					socket.destroy();
 				}
