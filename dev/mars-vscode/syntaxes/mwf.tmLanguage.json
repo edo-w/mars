@@ -1,0 +1,42 @@
+{
+  "name": "Mars Workflow",
+  "scopeName": "source.mwf",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    {
+      "match": "\\b(use)\\s+([A-Za-z_][A-Za-z_0-9/-]*)",
+      "captures": {
+        "1": { "name": "keyword.control.mwf" },
+        "2": { "name": "entity.name.namespace.mwf" }
+      }
+    },
+    { "match": "\\b(workflow|input|output|task|run|call|let|use|shape|fn|const|value|return|if|else|env|workdir|as)\\b", "name": "keyword.control.mwf" },
+    { "match": "\\b(true|false|null|void)\\b", "name": "constant.language.mwf" },
+    { "match": "\\b[0-9]+(?:\\.[0-9]+)?\\b", "name": "constant.numeric.mwf" },
+    { "match": "\\b(and|or|not)\\b|==|!=|<=|>=|[+*/%<>=!-]", "name": "keyword.operator.mwf" },
+    { "match": "\\b[A-Za-z_][A-Za-z_0-9]*(?=\\s*\\()", "name": "entity.name.function.mwf" },
+    { "match": "\\b[A-Za-z_][A-Za-z_0-9]*(?=\\s*:)" , "name": "variable.other.property.mwf" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        { "name": "comment.line.double-slash.mwf", "match": "//.*$" },
+        { "name": "comment.block.mwf", "begin": "/\\*", "end": "\\*/" }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.single.mwf",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            { "name": "constant.character.escape.mwf", "match": "\\\\." },
+            { "name": "meta.interpolation.mwf", "begin": "(?<!\\\\)\\{", "end": "\\}", "patterns": [{ "include": "$base" }] }
+          ]
+        }
+      ]
+    }
+  }
+}

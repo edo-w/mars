@@ -454,6 +454,8 @@ public partial class WorkflowBinder
 			var workflow = await this.compileFile(targetPath, cancellationToken);
 			if (workflow is null)
 			{
+				var message = $"Could not load called workflow '{step.Target}' at '{targetPath}'.";
+				this.Report("WF201", message, step.Span);
 				bound = new BoundStep(step, WorkflowType.Unknown, WorkflowType.Unknown);
 			}
 			else
@@ -486,7 +488,8 @@ public partial class WorkflowBinder
 			return imported.Export.Source;
 		}
 
-		var name = target.EndsWith(".mars", StringComparison.Ordinal) ? target : $"{target}.mars";
+		var hasExtension = Path.HasExtension(target);
+		var name = hasExtension ? target : $"{target}.mwf";
 		var directory = Path.GetDirectoryName(this.document.Path)!;
 		var relative = name.Replace('/', Path.DirectorySeparatorChar);
 		var fullPath = Path.GetFullPath(relative, directory);

@@ -1,0 +1,57 @@
+{
+  "name": "mars-vscode",
+  "displayName": "Mars Workflows",
+  "description": "Syntax coloring and diagnostics for Mars workflow files",
+  "version": "0.0.1",
+  "publisher": "mars-dev",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/edo-w/mars.git"
+  },
+  "engines": {
+    "vscode": "^1.138.0"
+  },
+  "extensionKind": ["workspace"],
+  "main": "./dist/extension.js",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Syntax checks remain available. Module descriptions require workspace trust."
+    }
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "mars-workflow",
+        "aliases": ["Mars Workflow", "mwf"],
+        "extensions": [".mwf"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "mars-workflow",
+        "scopeName": "source.mwf",
+        "path": "./syntaxes/mwf.tmLanguage.json"
+      }
+    ]
+  },
+  "scripts": {
+    "check": "bun node_modules/typescript/bin/tsc --noEmit",
+    "build": "bun build src/extension.ts --target=node --format=cjs --external vscode --outdir=dist",
+    "build:test": "bun build src/test/suite.ts --target=node --format=cjs --external vscode --outfile=dist/test/suite.js",
+    "test:smoke": "bun run build && bun run build:test && bun src/test/run.ts",
+    "dev": "bun scripts/open.ts",
+    "package": "bun node_modules/@vscode/vsce/vsce package --no-dependencies --skip-license --target win32-x64 --out dist/mars-vscode.vsix"
+  },
+  "dependencies": {
+    "vscode-languageclient": "10.1.2"
+  },
+  "devDependencies": {
+    "@vscode/test-electron": "3.1.0",
+    "@types/vscode": "1.138.0",
+    "@vscode/vsce": "4.0.0",
+    "typescript": "7.0.2"
+  }
+}

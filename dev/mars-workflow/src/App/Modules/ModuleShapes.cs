@@ -61,3 +61,14 @@ public interface IWorkflowSourceReader
 {
 	Task<string> ReadAsync(string path, CancellationToken cancellationToken);
 }
+
+public class UnknownModuleShapeException : FormatException
+{
+	public UnknownModuleShapeException(string reference)
+		: base($"Unknown shape reference '{reference}'.")
+	{
+		this.Reference = reference;
+	}
+
+	public string Reference { get; }
+}

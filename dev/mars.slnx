@@ -15,4 +15,8 @@
     <Project Path="mars-workflow/src/Mars.Workflow.csproj" />
     <Project Path="mars-workflow/test/Mars.Workflow.Tests.csproj" />
   </Folder>
+  <Folder Name="/mars-lsp/">
+    <Project Path="mars-lsp/src/Mars.Lsp.csproj" />
+    <Project Path="mars-lsp/test/Mars.Lsp.Tests.csproj" />
+  </Folder>
 </Solution>

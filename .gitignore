@@ -37,3 +37,4 @@ Thumbs.db
 .vs/
 .cache/dotnet/
 .cache/nuget/
+dev/mars-vscode/server/

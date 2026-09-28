@@ -39,7 +39,7 @@ public class ModuleMetadataReader
 
 			if (!shapeDefinitions.TryGetValue(reference, out var definition))
 			{
-				throw new FormatException($"Unknown shape reference '{reference}'.");
+				throw new UnknownModuleShapeException(reference);
 			}
 
 			if (!resolvingShapes.Add(reference))

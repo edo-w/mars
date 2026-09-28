@@ -746,7 +746,7 @@ Conceptually:
 {
   "name": "deploy",
   "kind": "workflow",
-  "source": "./workflows/deploy.mars"
+  "source": "./workflows/deploy.mwf"
 }
 ```
 
@@ -916,7 +916,7 @@ mars.shape('DeployResult', {
 
 mars.fn('deploymentName', inputs, t.string, handler)
 mars.task('deploy', inputs, DeployResult, handler)
-mars.workflow('release', './workflows/release.mars')
+mars.workflow('release', './workflows/release.mwf')
 
 mars.serve()
 ```

@@ -10,9 +10,9 @@ public class WorkflowModuleCatalog : IWorkflowModuleCatalog, IAsyncDisposable
 	private readonly ModuleMetadataReader metadataReader = new();
 	private readonly Dictionary<string, WorkflowModuleProcess> processes = new(StringComparer.Ordinal);
 	private readonly Dictionary<string, WorkflowModule> modules = new(StringComparer.Ordinal);
+	private readonly Dictionary<string, JsonNode?> outputs = new(StringComparer.Ordinal);
 	private readonly Dictionary<string, ConcurrentQueue<WorkflowDiagnosticLine>>
 		preRunDiagnostics = new(StringComparer.Ordinal);
-	private bool loaded;
 
 	public WorkflowModuleCatalog(WorkflowManifest? manifest)
 	{
@@ -29,61 +29,89 @@ public class WorkflowModuleCatalog : IWorkflowModuleCatalog, IAsyncDisposable
 			return existing;
 		}
 
-		var isDeclared = this.manifest?.Modules.Any(item => item.Path == modulePath) == true;
-		if (!isDeclared)
+		var entry = this.manifest?.Modules.FirstOrDefault(item => item.Path == modulePath);
+		if (entry is null)
 		{
 			return null;
 		}
 
-		await this.LoadAllAsync(cancellationToken);
+		await this.DescribeModuleAsync(entry, cancellationToken);
+		while (true)
+		{
+			try
+			{
+				var describedModules = this.metadataReader.ReadAll(this.outputs);
+				foreach (var described in describedModules.Values)
+				{
+					var exports = this.ResolveWorkflowSources(described.Exports);
+					this.modules[described.Path] = new WorkflowModule(described.Path, exports);
+				}
+
+				break;
+			}
+			catch (UnknownModuleShapeException exception)
+			{
+				var dependency = this.FindShapeModule(exception.Reference);
+				if (dependency is null || this.outputs.ContainsKey(dependency.Path))
+				{
+					throw;
+				}
+
+				await this.DescribeModuleAsync(dependency, cancellationToken);
+			}
+		}
+
 		var module = this.modules[modulePath];
 
 		return module;
 	}
 
-	private async Task LoadAllAsync(CancellationToken cancellationToken)
+	private WorkflowModuleEntry? FindShapeModule(string reference)
 	{
-		if (this.loaded)
+		var separator = reference.LastIndexOf('/');
+		if (separator <= 0)
+		{
+			return null;
+		}
+
+		var modulePath = reference[..separator];
+		var entry = this.manifest?.Modules.FirstOrDefault(item => item.Path == modulePath);
+
+		return entry;
+	}
+
+	private async Task DescribeModuleAsync(
+		WorkflowModuleEntry entry,
+		CancellationToken cancellationToken
+	)
+	{
+		if (this.outputs.ContainsKey(entry.Path))
 		{
 			return;
 		}
 
-		var outputs = new Dictionary<string, JsonNode?>(StringComparer.Ordinal);
+		var diagnostics = new ConcurrentQueue<WorkflowDiagnosticLine>();
+		void CaptureDiagnostic(string line)
+		{
+			var item = new WorkflowDiagnosticLine(DateTimeOffset.UtcNow, line);
+			diagnostics.Enqueue(item);
+		}
+
+		var process = new WorkflowModuleProcess(
+			entry,
+			this.manifest!.Directory,
+			diagnostic: CaptureDiagnostic
+		);
 		try
 		{
-			foreach (var entry in this.manifest!.Modules)
-			{
-				var diagnostics = new ConcurrentQueue<WorkflowDiagnosticLine>();
-				this.preRunDiagnostics.Add(entry.Path, diagnostics);
-				void CaptureDiagnostic(string line)
-				{
-					var item = new WorkflowDiagnosticLine(DateTimeOffset.UtcNow, line);
-					diagnostics.Enqueue(item);
-				}
-
-				var process = new WorkflowModuleProcess(
-					entry,
-					this.manifest.Directory,
-					diagnostic: CaptureDiagnostic
-				);
-				this.processes.Add(entry.Path, process);
-				var output = await process.DescribeAsync(cancellationToken);
-				outputs.Add(entry.Path, output);
-			}
-
-			var describedModules = this.metadataReader.ReadAll(outputs);
-			foreach (var described in describedModules.Values)
-			{
-				var exports = this.ResolveWorkflowSources(described.Exports);
-				var module = new WorkflowModule(described.Path, exports);
-				this.modules.Add(module.Path, module);
-			}
-
-			this.loaded = true;
+			var output = await process.DescribeAsync(cancellationToken);
+			this.outputs.Add(entry.Path, output);
+			this.processes.Add(entry.Path, process);
+			this.preRunDiagnostics.Add(entry.Path, diagnostics);
 		}
 		catch
 		{
-			await this.DisposeAsync();
+			await process.DisposeAsync();
 			throw;
 		}
 	}
@@ -146,8 +174,8 @@ public class WorkflowModuleCatalog : IWorkflowModuleCatalog, IAsyncDisposable
 
 		this.processes.Clear();
 		this.modules.Clear();
+		this.outputs.Clear();
 		this.preRunDiagnostics.Clear();
-		this.loaded = false;
 		GC.SuppressFinalize(this);
 	}
 }

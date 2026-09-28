@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <PublishAot>true</PublishAot>
+    <PublishSingleFile>true</PublishSingleFile>
+    <NativeDebugSymbols>false</NativeDebugSymbols>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../mars-workflow/src/Mars.Workflow.csproj" />
+  </ItemGroup>
+</Project>

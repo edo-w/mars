@@ -15,12 +15,12 @@ workflow {
 run 'echo Hello {name}'
 ```
 
-Save this as `hello.mars` and run:
+Save this as `hello.mwf` and run:
 
 ```text
-mars wf check hello.mars
-mars wf graph hello.mars --format dot
-mars wf run hello.mars --input name=Mars
+mars wf check hello.mwf
+mars wf graph hello.mwf --format dot
+mars wf run hello.mwf --input name=Mars
 ```
 
 Repeat `--input key=value` or `-i key=value` to set fields. Dotted keys set

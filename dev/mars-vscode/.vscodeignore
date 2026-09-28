@@ -1,0 +1,8 @@
+src/**
+scripts/**
+node_modules/**
+*.lock
+tsconfig.json
+server/**/*.pdb
+dist/*.vsix
+dist/test/**

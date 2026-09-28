@@ -57,3 +57,42 @@ run = '"{{config_root}}/dev/mars-cli/dist/aot/Mars.Cli.exe" wf'
 
 [tasks.wf.env]
 MARS_HOME = "{{config_root}}/.mars/tmp"
+
+[tasks."lsp:build-aot"]
+description = "Publish the Windows x64 Mars language server"
+depends = ["di"]
+run = "dotnet publish dev/mars-lsp/src/Mars.Lsp.csproj -c Release -r win-x64 -o dev/mars-lsp/dist/aot --self-contained true --packages .cache/nuget --no-http-cache"
+
+[tasks."vscode:di"]
+description = "Install VS Code extension dependencies"
+dir = "dev/mars-vscode"
+run = "bun install --frozen-lockfile"
+
+[tasks."vscode:check"]
+description = "Check the VS Code extension TypeScript"
+dir = "dev/mars-vscode"
+depends = ["vscode:di"]
+run = "bun run check"
+
+[tasks."vscode:build"]
+description = "Build the VS Code extension"
+dir = "dev/mars-vscode"
+depends = ["vscode:di"]
+run = "bun run build"
+
+[tasks."vscode:package"]
+description = "Package the Windows x64 VS Code extension and Native AOT server"
+depends = ["vscode:check", "vscode:build", "lsp:build-aot"]
+run = "pwsh -NoProfile -File scripts/package-mars-vscode.ps1"
+
+[tasks."vscode:test"]
+description = "Install and smoke test the packaged VSIX in a workspace-local VS Code"
+dir = "dev/mars-vscode"
+depends = ["vscode:package"]
+run = "bun run test:smoke"
+
+[tasks."vscode:dev"]
+description = "Open the packaged VSIX in VS Code for manual testing"
+dir = "dev/mars-vscode"
+depends = ["vscode:package"]
+run = "bun run dev"

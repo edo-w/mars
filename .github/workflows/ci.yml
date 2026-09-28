@@ -52,3 +52,64 @@ jobs:
       - name: Test workflow SDK
         working-directory: dev/mars-workflow/sdk/typescript
         run: bun run test
+
+      - name: Install VS Code extension dependencies
+        working-directory: dev/mars-vscode
+        run: bun install --frozen-lockfile
+
+      - name: Check VS Code extension types
+        working-directory: dev/mars-vscode
+        run: bun run check
+
+      - name: Build VS Code extension
+        working-directory: dev/mars-vscode
+        run: bun run build
+
+  vscode-package:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install .NET 10
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Restore .NET dependencies
+        run: dotnet restore dev/mars.slnx
+
+      - name: Publish Windows x64 language server
+        run: dotnet publish dev/mars-lsp/src/Mars.Lsp.csproj -c Release -r win-x64 -o dev/mars-lsp/dist/aot --self-contained true
+
+      - name: Test published language server
+        shell: pwsh
+        run: |
+          $env:MARS_LSP_TEST_BINARY = (Resolve-Path 'dev/mars-lsp/dist/aot/Mars.Lsp.exe').Path
+          dotnet test dev/mars-lsp/test/Mars.Lsp.Tests.csproj -c Release --no-restore
+
+      - name: Install VS Code extension dependencies
+        working-directory: dev/mars-vscode
+        run: bun install --frozen-lockfile
+
+      - name: Check VS Code extension types
+        working-directory: dev/mars-vscode
+        run: bun run check
+
+      - name: Build VS Code extension
+        working-directory: dev/mars-vscode
+        run: bun run build
+
+      - name: Package VSIX
+        shell: pwsh
+        run: ./scripts/package-mars-vscode.ps1
+
+      - name: Smoke test packaged VSIX
+        working-directory: dev/mars-vscode
+        run: bun run test:smoke

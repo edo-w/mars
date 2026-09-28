@@ -69,8 +69,12 @@ public class WorkflowCompiler
 			}
 			catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
 			{
-				var span = new SourceSpan(fullPath, 0, 0, 1, 1);
-				this.diagnostics.Add(new WorkflowDiagnostic("WF201", exception.Message, span));
+				var isRoot = this.activePaths.Count == 1;
+				if (isRoot)
+				{
+					var span = new SourceSpan(fullPath, 0, 0, 1, 1);
+					this.diagnostics.Add(new WorkflowDiagnostic("WF201", exception.Message, span));
+				}
 
 				return null;
 			}

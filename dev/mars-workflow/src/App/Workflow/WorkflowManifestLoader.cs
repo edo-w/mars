@@ -9,18 +9,41 @@ public class WorkflowManifestLoader
 	{
 		var fullPath = Path.GetFullPath(workflowPath);
 		var directory = new DirectoryInfo(Path.GetDirectoryName(fullPath)!);
+		string? standaloneManifestPath = null;
 		while (directory is not null)
 		{
-			var path = Path.Combine(directory.FullName, "mars-workflow.yml");
-			if (File.Exists(path))
+			var manifestPath = Path.Combine(directory.FullName, "mars-workflow.yml");
+			var configPath = Path.Combine(directory.FullName, "mars.yml");
+			if (File.Exists(configPath))
 			{
-				return Read(path);
+				if (File.Exists(manifestPath))
+				{
+					return Read(manifestPath);
+				}
+
+				return null;
+			}
+
+			if (standaloneManifestPath is null && File.Exists(manifestPath))
+			{
+				standaloneManifestPath = manifestPath;
+			}
+
+			if (directory.Name.Equals(".mars", StringComparison.OrdinalIgnoreCase))
+			{
+				// Local state is separate from the enclosing app source tree.
+				break;
 			}
 
 			directory = directory.Parent;
 		}
 
-		return null;
+		if (standaloneManifestPath is null)
+		{
+			return null;
+		}
+
+		return Read(standaloneManifestPath);
 	}
 
 	private static WorkflowManifest Read(string path)
