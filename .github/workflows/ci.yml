@@ -22,6 +22,9 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+
       - name: Install SSH tooling
         run: sudo apt-get update && sudo apt-get install -y openssh-client
 
@@ -33,3 +36,19 @@ jobs:
 
       - name: Run tests
         run: dotnet test dev/mars.slnx --configuration Release --no-build --no-restore
+
+      - name: Install workflow SDK dependencies
+        working-directory: dev/mars-workflow/sdk/typescript
+        run: bun install --frozen-lockfile
+
+      - name: Check workflow SDK types
+        working-directory: dev/mars-workflow/sdk/typescript
+        run: bun run check
+
+      - name: Build workflow SDK
+        working-directory: dev/mars-workflow/sdk/typescript
+        run: bun run build
+
+      - name: Test workflow SDK
+        working-directory: dev/mars-workflow/sdk/typescript
+        run: bun run test

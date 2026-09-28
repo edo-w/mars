@@ -89,8 +89,13 @@ public class LocalSecretsService : ISecretsService, IDisposable
 				throw new UnprocessableException($"Unsupported KDF '{model.KdfName}' in stored environment key.");
 			}
 
-			var wrappingKey = Rfc2898DeriveBytes.Pbkdf2(password, model.KdfSalt,
-				model.KdfIterations, HashAlgorithmName.SHA256, KeyLength);
+			var wrappingKey = Rfc2898DeriveBytes.Pbkdf2(
+				password,
+				model.KdfSalt,
+				model.KdfIterations,
+				HashAlgorithmName.SHA256,
+				KeyLength
+			);
 			var dataKey = new byte[KeyLength];
 
 			try
@@ -118,8 +123,13 @@ public class LocalSecretsService : ISecretsService, IDisposable
 		var newNonce = RandomNumberGenerator.GetBytes(NonceLength);
 		var newCiphertext = new byte[KeyLength];
 		var newTag = new byte[TagLength];
-		var newWrappingKey = Rfc2898DeriveBytes.Pbkdf2(password, newSalt, KdfIterations,
-			HashAlgorithmName.SHA256, KeyLength);
+		var newWrappingKey = Rfc2898DeriveBytes.Pbkdf2(
+			password,
+			newSalt,
+			KdfIterations,
+			HashAlgorithmName.SHA256,
+			KeyLength
+		);
 
 		try
 		{

@@ -10,8 +10,10 @@ namespace Mars.Local.App.LocalKv;
 
 public class LocalKvService : IKvService
 {
-	private static readonly Regex KeyPattern = new("^/(?:[A-Za-z0-9_-]+)(?:/[A-Za-z0-9_-]+)*$",
-		RegexOptions.Compiled | RegexOptions.CultureInvariant);
+	private static readonly Regex KeyPattern = new(
+		"^/(?:[A-Za-z0-9_-]+)(?:/[A-Za-z0-9_-]+)*$",
+		RegexOptions.Compiled | RegexOptions.CultureInvariant
+	);
 
 	private readonly LocalKvRepo repo;
 	private readonly ISecretsService secrets;
@@ -100,8 +102,12 @@ public class LocalKvService : IKvService
 			}
 
 			var versionText = key[(marker + 1)..];
-			var parsed = int.TryParse(versionText, NumberStyles.None,
-				CultureInfo.InvariantCulture, out var parsedVersion);
+			var parsed = int.TryParse(
+				versionText,
+				NumberStyles.None,
+				CultureInfo.InvariantCulture,
+				out var parsedVersion
+			);
 			if (!parsed || parsedVersion < 1)
 			{
 				throw new BadRequestException($"Invalid KV version suffix in '{key}'.");

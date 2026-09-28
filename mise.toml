@@ -45,3 +45,15 @@ run = '"{{config_root}}/dev/mars-cli/dist/aot/Mars.Cli.exe"'
 
 [tasks.mars.env]
 MARS_HOME = "{{config_root}}/.mars/tmp"
+
+[tasks.wf]
+description = "Run Mars workflow commands with the published native CLI"
+dir = "{{cwd}}"
+output = "interleave"
+quiet = true
+raw = true
+raw_args = true
+run = '"{{config_root}}/dev/mars-cli/dist/aot/Mars.Cli.exe" wf'
+
+[tasks.wf.env]
+MARS_HOME = "{{config_root}}/.mars/tmp"

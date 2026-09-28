@@ -1,6 +1,6 @@
 using Microsoft.Data.Sqlite;
 
-namespace Mars.Local.Db.Migrations;
+namespace Mars.Local.Db.Migrations.State;
 
 public class Migration20260927000000Initial : IDbMigration
 {

@@ -12,5 +12,6 @@
     <PackageReference Include="System.CommandLine" />
     <ProjectReference Include="../../mars-core/src/Mars.Core.csproj" />
     <ProjectReference Include="../../mars-local/src/Mars.Local.csproj" />
+    <ProjectReference Include="../../mars-workflow/src/Mars.Workflow.csproj" />
   </ItemGroup>
 </Project>

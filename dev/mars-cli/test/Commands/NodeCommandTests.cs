@@ -96,8 +96,12 @@ public class NodeCommandTests
 			.ReturnsAsync(Array.Empty<Node>());
 		var handler = new NodeListCommandHandler(environments.Object, nodes.Object);
 		var input = new NodeListCommandInput("web, DB_PRIMARY", null);
-		var context = new CommandContext<NodeListCommandInput>(input, TextWriter.Null,
-			TextWriter.Null, CancellationToken.None);
+		var context = new CommandContext<NodeListCommandInput>(
+			input,
+			TextWriter.Null,
+			TextWriter.Null,
+			CancellationToken.None
+		);
 
 		var exitCode = await handler.HandleAsync(context);
 
@@ -117,8 +121,19 @@ public class NodeCommandTests
 		environments.Setup(item => item.ResolveAsync(null)).ReturnsAsync(environment);
 		var nodeId = Guid.CreateVersion7();
 		var date = new DateTimeOffset(2026, 9, 27, 12, 0, 0, TimeSpan.Zero);
-		var node = new Node(nodeId, "web-1", null, null, null, "new", date, date,
-			new Dictionary<string, JsonElement>(), []);
+		var node = new Node(
+			nodeId,
+			"web-1",
+			null,
+			null,
+			null,
+			"new",
+			date,
+			date,
+			new Dictionary<string,
+			JsonElement>(),
+			[]
+		);
 		using var document = JsonDocument.Parse("true");
 		var value = document.RootElement.Clone();
 		var nodes = new Mock<INodeService>();
@@ -128,8 +143,12 @@ public class NodeCommandTests
 		var handler = new NodePropertyGetCommandHandler(environments.Object, nodes.Object);
 		var input = new NodePropertyGetCommandInput("web-1", "docker.installed", null);
 		using var output = new StringWriter();
-		var context = new CommandContext<NodePropertyGetCommandInput>(input, output,
-			TextWriter.Null, CancellationToken.None);
+		var context = new CommandContext<NodePropertyGetCommandInput>(
+			input,
+			output,
+			TextWriter.Null,
+			CancellationToken.None
+		);
 
 		var exitCode = await handler.HandleAsync(context);
 
@@ -146,8 +165,19 @@ public class NodeCommandTests
 		environments.Setup(item => item.ResolveAsync(null)).ReturnsAsync(environment);
 		var nodeId = Guid.CreateVersion7();
 		var date = new DateTimeOffset(2026, 9, 27, 12, 0, 0, TimeSpan.Zero);
-		var node = new Node(nodeId, "web-1", null, null, null, "new", date, date,
-			new Dictionary<string, JsonElement>(), []);
+		var node = new Node(
+			nodeId,
+			"web-1",
+			null,
+			null,
+			null,
+			"new",
+			date,
+			date,
+			new Dictionary<string,
+			JsonElement>(),
+			[]
+		);
 		var nodes = new Mock<INodeService>();
 		nodes.Setup(item => item.ResolveAsync(environment.Id, "web-1")).ReturnsAsync(node);
 

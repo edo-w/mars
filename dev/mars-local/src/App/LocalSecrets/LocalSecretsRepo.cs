@@ -5,9 +5,9 @@ namespace Mars.Local.App.LocalSecrets;
 
 public class LocalSecretsRepo
 {
-	private readonly DbSession session;
+	private readonly StateDbSession session;
 
-	public LocalSecretsRepo(DbSession session)
+	public LocalSecretsRepo(StateDbSession session)
 	{
 		this.session = session;
 	}

@@ -36,8 +36,13 @@ public class SshCaRemoveCommandHandler
 		await context.Output.WriteLineAsync($"Type '{ca.Name}' to confirm:");
 
 		var standardInput = this.process.OpenStandardInput();
-		using var reader = new StreamReader(standardInput, Encoding.UTF8,
-			detectEncodingFromByteOrderMarks: false, bufferSize: 1024, leaveOpen: true);
+		using var reader = new StreamReader(
+			standardInput,
+			Encoding.UTF8,
+			detectEncodingFromByteOrderMarks: false,
+			bufferSize: 1024,
+			leaveOpen: true
+		);
 		var confirmation = await reader.ReadLineAsync(context.CancellationToken);
 		if (confirmation != ca.Name)
 		{

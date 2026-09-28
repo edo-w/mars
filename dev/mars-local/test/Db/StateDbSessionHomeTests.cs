@@ -7,7 +7,7 @@ using Assert = NUnit.Framework.Legacy.ClassicAssert;
 
 namespace Mars.Local.Tests.Db;
 
-public class DbSessionHomeTests
+public class StateDbSessionHomeTests
 {
 	[Test]
 	public void DefaultsToMarsDirectoryInsideUserHome()
@@ -17,7 +17,7 @@ public class DbSessionHomeTests
 		var process = new Mock<IVProcess>();
 		process.SetupGet(item => item.UserHomeDirectory).Returns(userHome);
 
-		var marsHome = DbSession.ResolveHome(process.Object);
+		var marsHome = StateDbSession.ResolveHome(process.Object);
 
 		Assert.AreEqual(Path.Combine(userHome, ".mars"), marsHome);
 	}
@@ -30,7 +30,7 @@ public class DbSessionHomeTests
 		process.SetupGet(item => item.CurrentDirectory).Returns(currentDirectory);
 		process.Setup(item => item.GetEnvironmentVariable("MARS_HOME")).Returns(".mars/tmp");
 
-		var marsHome = DbSession.ResolveHome(process.Object);
+		var marsHome = StateDbSession.ResolveHome(process.Object);
 
 		Assert.AreEqual(Path.Combine(currentDirectory, ".mars", "tmp"), marsHome);
 	}
@@ -43,11 +43,11 @@ public class DbSessionHomeTests
 		var process = new Mock<IVProcess>();
 		process.SetupGet(item => item.CurrentDirectory).Returns(root);
 		process.Setup(item => item.GetEnvironmentVariable("MARS_HOME")).Returns(configuredHome);
-		var marsHome = DbSession.ResolveHome(process.Object);
+		var marsHome = StateDbSession.ResolveHome(process.Object);
 		var config = new Config(Guid.CreateVersion7(), "app", "app");
 		var vfs = new Mock<IVfs>();
 
-		var session = new DbSession(config, marsHome, vfs.Object);
+		var session = new StateDbSession(config, marsHome, vfs.Object);
 
 		Assert.AreEqual(configuredHome, marsHome);
 		Assert.AreEqual(Path.Combine(configuredHome, "app", config.Id.ToString(), "state.db"), session.DatabasePath);

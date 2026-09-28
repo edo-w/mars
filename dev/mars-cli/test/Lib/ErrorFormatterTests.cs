@@ -1,5 +1,6 @@
 using Mars.Cli.Lib;
 using Mars.Core.Lib;
+using Mars.Workflow.App.Interop;
 using NUnit.Framework;
 using Assert = NUnit.Framework.Legacy.ClassicAssert;
 
@@ -45,6 +46,22 @@ public class ErrorFormatterTests
 		var result = ErrorFormatter.Format(error);
 
 		Assert.AreEqual("ExternalError (503): Remote service failed.", result);
+	}
+
+	[Test]
+	public void FormatsWorkflowProtocolCode()
+	{
+		var error = new WorkflowProtocolException(
+			WorkflowProtocolCodes.MessageAfterReturn,
+			"Module sent two returns."
+		);
+
+		var result = ErrorFormatter.Format(error);
+
+		Assert.AreEqual(
+			"workflow protocol error (WFPROTO003): Module sent two returns.",
+			result
+		);
 	}
 
 	private class ExternalError : Exception, IErrorCode

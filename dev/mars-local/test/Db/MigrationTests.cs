@@ -1,4 +1,4 @@
-using Mars.Local.Db.Migrations;
+using Mars.Local.Db.Migrations.State;
 using Mars.Core.App.Config;
 using Mars.Local.Lib;
 using Mars.Local.Db;
@@ -23,7 +23,7 @@ public class MigrationTests
 		var configService = new ConfigService(vfs);
 		var config = await configService.InitAsync(root, "Migration Test", "app");
 		var marsHome = Path.Combine(root, ".mars");
-		var session = new DbSession(config, marsHome, vfs);
+		var session = new StateDbSession(config, marsHome, vfs);
 		session.Initialize();
 
 		IDbMigration[] migrations =

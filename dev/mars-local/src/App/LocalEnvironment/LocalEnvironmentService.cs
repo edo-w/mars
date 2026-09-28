@@ -154,14 +154,17 @@ public class LocalEnvironmentService : IEnvironmentService
 
 		var environment = await this.ResolveAsync(fullName);
 
-		this.repo.UpdateProperties(environment.Id, json =>
-		{
-			var properties = ReadProperties(json);
-			properties[key] = value;
-			var updatedJson = JsonSerializer.Serialize(properties, LocalJsonContext.Default.DictionaryStringString);
+		this.repo.UpdateProperties(
+			environment.Id,
+			json =>
+			{
+				var properties = ReadProperties(json);
+				properties[key] = value;
+				var updatedJson = JsonSerializer.Serialize(properties, LocalJsonContext.Default.DictionaryStringString);
 
-			return updatedJson;
-		});
+				return updatedJson;
+			}
+		);
 	}
 
 	public async Task RemovePropertyAsync(string fullName, string key)
@@ -170,14 +173,17 @@ public class LocalEnvironmentService : IEnvironmentService
 
 		var environment = await this.ResolveAsync(fullName);
 
-		this.repo.UpdateProperties(environment.Id, json =>
-		{
-			var properties = ReadProperties(json);
-			properties.Remove(key);
-			var updatedJson = JsonSerializer.Serialize(properties, LocalJsonContext.Default.DictionaryStringString);
+		this.repo.UpdateProperties(
+			environment.Id,
+			json =>
+			{
+				var properties = ReadProperties(json);
+				properties.Remove(key);
+				var updatedJson = JsonSerializer.Serialize(properties, LocalJsonContext.Default.DictionaryStringString);
 
-			return updatedJson;
-		});
+				return updatedJson;
+			}
+		);
 	}
 
 	private static Environment ToShape(EnvironmentModel model)

@@ -29,8 +29,12 @@ public class SshCaRemoveCommandTests
 		using var output = new StringWriter();
 		using var error = new StringWriter();
 		var commandInput = new SshCaRemoveCommandInput("main", null);
-		var context = new CommandContext<SshCaRemoveCommandInput>(commandInput, output, error,
-			CancellationToken.None);
+		var context = new CommandContext<SshCaRemoveCommandInput>(
+			commandInput,
+			output,
+			error,
+			CancellationToken.None
+		);
 
 		var exitCode = await handler.HandleAsync(context);
 
@@ -56,8 +60,12 @@ public class SshCaRemoveCommandTests
 		var handler = new SshCaRemoveCommandHandler(environments.Object, sshCa.Object, process.Object);
 		using var output = new StringWriter();
 		var commandInput = new SshCaRemoveCommandInput("main", null);
-		var context = new CommandContext<SshCaRemoveCommandInput>(commandInput, output, TextWriter.Null,
-			CancellationToken.None);
+		var context = new CommandContext<SshCaRemoveCommandInput>(
+			commandInput,
+			output,
+			TextWriter.Null,
+			CancellationToken.None
+		);
 
 		var exitCode = await handler.HandleAsync(context);
 

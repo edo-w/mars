@@ -16,16 +16,21 @@ public class PathCommandTests
 	[Test]
 	public async Task PathShowsExistingAppLocations()
 	{
-		var root = Path.Combine(TestContext.CurrentContext.WorkDirectory, "test-state",
-			Guid.NewGuid().ToString("N"));
+		var root = Path.Combine(
+			TestContext.CurrentContext.WorkDirectory,
+			"test-state",
+			Guid.NewGuid().ToString("N")
+		);
 		Directory.CreateDirectory(root);
 
 		var vfs = new LocalVfs();
 		var configService = new ConfigService(vfs);
 		var config = await configService.InitAsync(root, "Paths", "app");
 		var marsHome = Path.Combine(root, ".mars-home");
-		var database = new DbSession(config, marsHome, vfs);
+		var database = new StateDbSession(config, marsHome, vfs);
 		database.Initialize();
+		var workflowDatabase = new WorkflowDbSession(marsHome, config.Id);
+		workflowDatabase.Initialize();
 		var checkoutState = Path.Combine(root, ".mars");
 		var selection = Path.Combine(checkoutState, "selected-environment");
 		var environmentId = Guid.CreateVersion7();
@@ -46,8 +51,12 @@ public class PathCommandTests
 		var command = CliCommands.Create(container);
 		using var output = new StringWriter();
 		var input = new PathCommandInput();
-		var context = new CommandContext<PathCommandInput>(input, output, TextWriter.Null,
-			CancellationToken.None);
+		var context = new CommandContext<PathCommandInput>(
+			input,
+			output,
+			TextWriter.Null,
+			CancellationToken.None
+		);
 		var handler = container.GetRequiredService<PathCommandHandler>();
 
 		var parseResult = command.Parse(["path"]);
@@ -59,6 +68,8 @@ public class PathCommandTests
 		var localStateLine = lines.Single(line => line.EndsWith(checkoutState, StringComparison.Ordinal));
 		var selectionLine = lines.Single(line => line.EndsWith(selection, StringComparison.Ordinal));
 		var databaseLine = lines.Single(line => line.EndsWith(database.DatabasePath, StringComparison.Ordinal));
+		var workflowDatabaseLine = lines.Single(line => line.EndsWith(workflowDatabase.DatabasePath, StringComparison.Ordinal));
+		var workflowLogsLine = lines.Single(line => line.EndsWith(workflowDatabase.LogDirectory, StringComparison.Ordinal));
 		var kvLine = lines.Single(line => line.EndsWith(kvDirectory, StringComparison.Ordinal));
 
 		Assert.IsEmpty(parseResult.Errors);
@@ -70,6 +81,8 @@ public class PathCommandTests
 		Assert.AreEqual("local_state", localStateLine[..pathColumn].Trim());
 		Assert.AreEqual("environment", selectionLine[..pathColumn].Trim());
 		Assert.AreEqual("state_db", databaseLine[..pathColumn].Trim());
+		Assert.AreEqual("workflow_db", workflowDatabaseLine[..pathColumn].Trim());
+		Assert.AreEqual("workflow_logs", workflowLogsLine[..pathColumn].Trim());
 		Assert.AreEqual($"kv_objects {environmentId}", kvLine[..pathColumn].Trim());
 		Assert.AreEqual(pathColumn, selectionLine.IndexOf(selection, StringComparison.Ordinal));
 		Assert.AreEqual(pathColumn, databaseLine.IndexOf(database.DatabasePath, StringComparison.Ordinal));
@@ -88,8 +101,12 @@ public class PathCommandTests
 		var handler = new PathCommandHandler(configService, vfs.Object, process.Object);
 		var input = new PathCommandInput();
 		using var output = new StringWriter();
-		var context = new CommandContext<PathCommandInput>(input, output, TextWriter.Null,
-			CancellationToken.None);
+		var context = new CommandContext<PathCommandInput>(
+			input,
+			output,
+			TextWriter.Null,
+			CancellationToken.None
+		);
 
 		var exitCode = await handler.HandleAsync(context);
 

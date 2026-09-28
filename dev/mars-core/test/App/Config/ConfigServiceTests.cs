@@ -83,7 +83,9 @@ public class ConfigServiceTests
 		var service = new ConfigService(vfs.Object);
 
 		var exception = Assert.ThrowsAsync<UnprocessableException>(async () =>
-			await service.ReadAsync(path));
+		{
+			await service.ReadAsync(path);
+		});
 
 		Assert.IsNotNull(exception);
 		Assert.IsTrue(exception!.Message.Contains("mars_id", StringComparison.Ordinal));
@@ -99,7 +101,9 @@ public class ConfigServiceTests
 		var service = new ConfigService(vfs.Object);
 
 		var error = Assert.ThrowsAsync<UnprocessableException>(async () =>
-			await service.ReadAsync(path));
+		{
+			await service.ReadAsync(path);
+		});
 
 		Assert.IsNotNull(error?.InnerException);
 		Assert.AreEqual(path, error?.Data["path"]);
@@ -113,7 +117,9 @@ public class ConfigServiceTests
 		var service = new ConfigService(vfs.Object);
 
 		var exception = Assert.ThrowsAsync<NotFoundException>(async () =>
-			await service.FindAsync(start));
+		{
+			await service.FindAsync(start);
+		});
 
 		Assert.IsNotNull(exception);
 		Assert.IsTrue(exception!.Message.Contains("mars init", StringComparison.Ordinal));

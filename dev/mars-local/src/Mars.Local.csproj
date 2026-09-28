@@ -9,5 +9,6 @@
     <PackageReference Include="SQLitePCLRaw.bundle_winsqlite3" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
     <PackageReference Include="SQLitePCLRaw.bundle_sqlite3" Condition="!$([MSBuild]::IsOSPlatform('Windows'))" />
     <ProjectReference Include="../../mars-core/src/Mars.Core.csproj" />
+    <ProjectReference Include="../../mars-workflow/src/Mars.Workflow.csproj" />
   </ItemGroup>
 </Project>

@@ -5,9 +5,9 @@ namespace Mars.Local.App.LocalKv;
 
 public class LocalKvRepo
 {
-	private readonly DbSession session;
+	private readonly StateDbSession session;
 
-	public LocalKvRepo(DbSession session)
+	public LocalKvRepo(StateDbSession session)
 	{
 		this.session = session;
 	}

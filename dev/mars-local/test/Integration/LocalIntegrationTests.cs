@@ -100,16 +100,29 @@ public class LocalIntegrationTests
 		Assert.AreEqual("new", statusContext.RootElement.GetProperty("prev").GetString());
 		Assert.AreEqual("ready", statusContext.RootElement.GetProperty("new").GetString());
 
-		Assert.ThrowsAsync<BadRequestException>(async () => await nodes.SetStatusAsync(state.Environment.Id, first.Id, "unknown"));
+		Assert.ThrowsAsync<BadRequestException>(async () =>
+		{
+			await nodes.SetStatusAsync(state.Environment.Id, first.Id, "unknown");
+		});
+
 		string[] builtInProperties = ["id", "name", "status", "hostname", "private_ip", "public_ip"];
 		foreach (var key in builtInProperties)
 		{
 			Assert.ThrowsAsync<UnprocessableException>(async () =>
-				await nodes.SetPropertyAsync(state.Environment.Id, first.Id, key, "changed"));
+			{
+				await nodes.SetPropertyAsync(state.Environment.Id, first.Id, key, "changed");
+			});
+
 			Assert.ThrowsAsync<UnprocessableException>(async () =>
-				await nodes.RemovePropertyAsync(state.Environment.Id, first.Id, key));
+			{
+				await nodes.RemovePropertyAsync(state.Environment.Id, first.Id, key);
+			});
 		}
-		Assert.ThrowsAsync<ConflictException>(async () => await nodes.CreateAsync(state.Environment.Id, "web-3", "127.0.0.1"));
+
+		Assert.ThrowsAsync<ConflictException>(async () =>
+		{
+			await nodes.CreateAsync(state.Environment.Id, "web-3", "127.0.0.1");
+		});
 
 		var foundByName = await nodes.ResolveAsync(state.Environment.Id, "web-1");
 		var foundById = await nodes.ResolveAsync(state.Environment.Id, first.Id.ToString());
@@ -117,7 +130,9 @@ public class LocalIntegrationTests
 		Assert.AreEqual(first.Id, foundByName.Id);
 		Assert.AreEqual(first.Id, foundById.Id);
 		Assert.ThrowsAsync<NotFoundException>(async () =>
-			await nodes.ResolveAsync(state.Environment.Id, "missing"));
+		{
+			await nodes.ResolveAsync(state.Environment.Id, "missing");
+		});
 	}
 
 	[Test]
@@ -130,18 +145,24 @@ public class LocalIntegrationTests
 		var yaml = await File.ReadAllTextAsync(Path.Combine(directory, "mars.yml"));
 		var loaded = await configService.FindAsync(directory);
 		var marsHome = Path.Combine(directory, ".mars");
-		var database = new DbSession(config, marsHome, vfs);
+		var database = new StateDbSession(config, marsHome, vfs);
 		database.Initialize();
-		var environments = new LocalEnvironmentService(config, new LocalEnvironmentRepo(database),
-			new LocalEnvironmentSelectionStore(directory, vfs));
+		var environments = new LocalEnvironmentService(
+			config,
+			new LocalEnvironmentRepo(database),
+			new LocalEnvironmentSelectionStore(directory, vfs)
+		);
 
 		var created = await environments.CreateAsync("dev");
 		await environments.SetPropertyAsync(created.FullName, "aws_account_id", "123");
 		await environments.SelectAsync(created.FullName);
-		var reopenedSession = new DbSession(loaded.Config, marsHome, vfs);
+		var reopenedSession = new StateDbSession(loaded.Config, marsHome, vfs);
 		reopenedSession.Initialize();
-		var reopened = new LocalEnvironmentService(loaded.Config, new LocalEnvironmentRepo(reopenedSession),
-			new LocalEnvironmentSelectionStore(directory, vfs));
+		var reopened = new LocalEnvironmentService(
+			loaded.Config,
+			new LocalEnvironmentRepo(reopenedSession),
+			new LocalEnvironmentSelectionStore(directory, vfs)
+		);
 		var selected = await reopened.GetSelectedAsync();
 
 		Assert.AreEqual(7, config.Id.Version);
@@ -152,8 +173,12 @@ public class LocalIntegrationTests
 		Assert.AreEqual("team/dev", created.FullName);
 		Assert.AreEqual(created.Id, selected?.Id);
 		Assert.AreEqual("123", selected?.Properties["aws_account_id"]);
-		Assert.IsTrue(database.DatabasePath.EndsWith(Path.Combine(".mars", "app", config.Id.ToString(), "state.db"),
-			StringComparison.Ordinal));
+		Assert.IsTrue(
+			database.DatabasePath.EndsWith(
+				Path.Combine(".mars", "app", config.Id.ToString(), "state.db"),
+				StringComparison.Ordinal
+			)
+		);
 		Assert.IsTrue(File.Exists(Path.Combine(directory, ".mars", "selected-environment")));
 
 		var selectedByName = await reopened.SelectAsync("dev");
@@ -161,11 +186,15 @@ public class LocalIntegrationTests
 		Assert.AreEqual("team/dev", (await reopened.GetSelectedAsync())?.FullName);
 
 		Assert.ThrowsAsync<ConflictException>(async () =>
-			await reopened.CreateAsync("dev"));
+		{
+			await reopened.CreateAsync("dev");
+		});
 
 		await reopened.CreateAsync("dev", "other");
 		var ambiguousName = Assert.ThrowsAsync<ConflictException>(async () =>
-			await reopened.SelectAsync("dev"));
+		{
+			await reopened.SelectAsync("dev");
+		});
 		Assert.IsTrue(ambiguousName!.Message.Contains("namespace/name", StringComparison.Ordinal));
 		Assert.AreEqual("other/dev, team/dev", ambiguousName.Data["matches"]);
 		Assert.AreEqual("team/dev", (await reopened.GetSelectedAsync())?.FullName);
@@ -174,7 +203,10 @@ public class LocalIntegrationTests
 		Assert.AreEqual("other/dev", selectedByFullName.FullName);
 		Assert.AreEqual("other/dev", (await reopened.GetSelectedAsync())?.FullName);
 
-		Assert.ThrowsAsync<NotFoundException>(async () => await reopened.SelectAsync("missing"));
+		Assert.ThrowsAsync<NotFoundException>(async () =>
+		{
+			await reopened.SelectAsync("missing");
+		});
 	}
 
 	[Test]
@@ -190,7 +222,7 @@ public class LocalIntegrationTests
 		var config = await configService.InitAsync(firstCheckout, "My App", "team");
 		File.Copy(Path.Combine(firstCheckout, "mars.yml"), Path.Combine(secondCheckout, "mars.yml"));
 		var marsHome = Path.Combine(root, ".mars");
-		var database = new DbSession(config, marsHome, vfs);
+		var database = new StateDbSession(config, marsHome, vfs);
 		database.Initialize();
 		var repo = new LocalEnvironmentRepo(database);
 		var firstSelection = new LocalEnvironmentSelectionStore(firstCheckout, vfs);
@@ -236,14 +268,34 @@ public class LocalIntegrationTests
 		var large = await kv.SetAsync(state.Environment.Id, "/large", largeBytes, "text", false);
 		var small = await kv.SetAsync(state.Environment.Id, "/small", firstBytes, "text", false);
 
-		var firstPath = Path.Combine(state.Database.AppDirectory, "env", state.Environment.Id.ToString(),
-			"kv", $"{first.Id}_1");
-		var secondPath = Path.Combine(state.Database.AppDirectory, "env", state.Environment.Id.ToString(),
-			"kv", $"{second.Id}_2");
-		var largePath = Path.Combine(state.Database.AppDirectory, "env", state.Environment.Id.ToString(),
-			"kv", $"{large.Id}_1");
-		var smallPath = Path.Combine(state.Database.AppDirectory, "env", state.Environment.Id.ToString(),
-			"kv", $"{small.Id}_1");
+		var firstPath = Path.Combine(
+			state.Database.AppDirectory,
+			"env",
+			state.Environment.Id.ToString(),
+			"kv",
+			$"{first.Id}_1"
+		);
+		var secondPath = Path.Combine(
+			state.Database.AppDirectory,
+			"env",
+			state.Environment.Id.ToString(),
+			"kv",
+			$"{second.Id}_2"
+		);
+		var largePath = Path.Combine(
+			state.Database.AppDirectory,
+			"env",
+			state.Environment.Id.ToString(),
+			"kv",
+			$"{large.Id}_1"
+		);
+		var smallPath = Path.Combine(
+			state.Database.AppDirectory,
+			"env",
+			state.Environment.Id.ToString(),
+			"kv",
+			$"{small.Id}_1"
+		);
 		using var connection = state.Database.Open();
 		using var command = connection.CreateCommand();
 		command.CommandText = "SELECT count(*) FROM kv WHERE value IS NULL";
@@ -316,7 +368,10 @@ public class LocalIntegrationTests
 		command.CommandText = "SELECT value FROM kv";
 		var stored = (byte[])command.ExecuteScalar()!;
 		Assert.IsFalse(stored.AsSpan().SequenceEqual(Encoding.UTF8.GetBytes("hidden-value")));
-		Assert.ThrowsAsync<UnprocessableException>(async () => await wrongKv.GetAsync(environment.Id, "/api/token"));
+		Assert.ThrowsAsync<UnprocessableException>(async () =>
+		{
+			await wrongKv.GetAsync(environment.Id, "/api/token");
+		});
 	}
 
 	[Test]
@@ -408,7 +463,9 @@ public class LocalIntegrationTests
 		}
 
 		Assert.ThrowsAsync<AuthenticationTagMismatchException>(async () =>
-			await kv.GetAsync(environment.Id, "/api/token"));
+		{
+			await kv.GetAsync(environment.Id, "/api/token");
+		});
 	}
 
 	private static async Task<TestEnvironmentContext> CreateEnvironmentAsync()
@@ -418,7 +475,7 @@ public class LocalIntegrationTests
 		var configService = new ConfigService(vfs);
 		var config = await configService.InitAsync(directory, "Tests", "app");
 		var marsHome = Path.Combine(directory, ".mars");
-		var database = new DbSession(config, marsHome, vfs);
+		var database = new StateDbSession(config, marsHome, vfs);
 		database.Initialize();
 		var environmentRepo = new LocalEnvironmentRepo(database);
 		var selection = new LocalEnvironmentSelectionStore(directory, vfs);
@@ -456,14 +513,14 @@ public class LocalIntegrationTests
 
 	public class TestEnvironmentContext
 	{
-		public TestEnvironmentContext(DbSession database, Environment environment, Config config)
+		public TestEnvironmentContext(StateDbSession database, Environment environment, Config config)
 		{
 			this.Database = database;
 			this.Environment = environment;
 			this.Config = config;
 		}
 
-		public DbSession Database { get; }
+		public StateDbSession Database { get; }
 		public Environment Environment { get; }
 		public Config Config { get; }
 	}

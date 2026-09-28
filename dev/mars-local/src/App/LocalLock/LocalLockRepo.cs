@@ -5,9 +5,9 @@ namespace Mars.Local.App.LocalLock;
 
 public class LocalLockRepo
 {
-	private readonly DbSession session;
+	private readonly StateDbSession session;
 
-	public LocalLockRepo(DbSession session)
+	public LocalLockRepo(StateDbSession session)
 	{
 		this.session = session;
 	}
@@ -15,9 +15,26 @@ public class LocalLockRepo
 	public bool Acquire(LeaseModel model, DateTimeOffset now)
 	{
 		const string sql = """
-            INSERT INTO lease (id, environment_id, name, owner, token, expire_date)
-            VALUES (@Id, @EnvironmentId, @Name, @Owner, @Token, @ExpireDate)
-            ON CONFLICT (environment_id, name)
+            INSERT INTO lease (
+                id,
+                environment_id,
+                name,
+                owner,
+                token,
+                expire_date
+            )
+            VALUES (
+                @Id,
+                @EnvironmentId,
+                @Name,
+                @Owner,
+                @Token,
+                @ExpireDate
+            )
+            ON CONFLICT (
+                environment_id,
+                name
+            )
             DO UPDATE SET
                 id = excluded.id,
                 owner = excluded.owner,

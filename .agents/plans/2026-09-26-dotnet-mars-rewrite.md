@@ -144,7 +144,7 @@ dev/
     test/Mars.Core.Tests.csproj
   mars-local/
     src/App/<feature>/Local*Service.cs, Local*Repo.cs
-    src/Db/DbSession.cs, DbMigration.cs, *Models.cs
+    src/Db/StateDbSession.cs, DbMigration.cs, *Models.cs
     src/Db/Migrations/<timestamp>_<description>.cs
     src/Lib/
     src/Mars.Local.csproj

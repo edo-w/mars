@@ -69,8 +69,18 @@ public class LocalNodeService : INodeService
 		this.repo.Create(model, context);
 
 		var properties = new Dictionary<string, JsonElement>();
-		var node = new Node(model.Id, validatedName, publicIp, null, null,
-			model.Status, now, now, properties, []);
+		var node = new Node(
+			model.Id,
+			validatedName,
+			publicIp,
+			null,
+			null,
+			model.Status,
+			now,
+			now,
+			properties,
+			[]
+		);
 
 		return Task.FromResult(node);
 	}
@@ -375,8 +385,12 @@ public class LocalNodeService : INodeService
 		var validNumber = false;
 		if (isNumber)
 		{
-			var parsed = double.TryParse(trimmed, NumberStyles.Float,
-				CultureInfo.InvariantCulture, out var parsedNumber);
+			var parsed = double.TryParse(
+				trimmed,
+				NumberStyles.Float,
+				CultureInfo.InvariantCulture,
+				out var parsedNumber
+			);
 			if (parsed)
 			{
 				validNumber = double.IsFinite(parsedNumber);

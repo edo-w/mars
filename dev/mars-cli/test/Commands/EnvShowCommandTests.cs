@@ -20,8 +20,12 @@ public class EnvShowCommandTests
 		var handler = new EnvShowCommandHandler(environments.Object);
 		var input = new EnvShowCommandInput("app/dev");
 		using var output = new StringWriter();
-		var context = new CommandContext<EnvShowCommandInput>(input, output, TextWriter.Null,
-			CancellationToken.None);
+		var context = new CommandContext<EnvShowCommandInput>(
+			input,
+			output,
+			TextWriter.Null,
+			CancellationToken.None
+		);
 
 		var exitCode = await handler.HandleAsync(context);
 

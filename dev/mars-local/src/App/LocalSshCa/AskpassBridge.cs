@@ -111,8 +111,13 @@ public class AskpassBridge : IAsyncDisposable
 	{
 		for (var readCount = 0; readCount < this.allowedReads; readCount++)
 		{
-			using var pipe = new NamedPipeServerStream(this.PipeName, PipeDirection.InOut, 1,
-				PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+			using var pipe = new NamedPipeServerStream(
+				this.PipeName,
+				PipeDirection.InOut,
+				1,
+				PipeTransmissionMode.Byte,
+				PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly
+			);
 			await pipe.WaitForConnectionAsync(this.cancellation.Token);
 
 			using var reader = new StreamReader(pipe, Encoding.UTF8, leaveOpen: true);

@@ -56,7 +56,9 @@ public class LocalVirtualServicesTests
 
 		Assert.AreEqual(TimeSpan.Zero, timer.UtcNow.Offset);
 		Assert.ThrowsAsync<TaskCanceledException>(async () =>
-			await timer.DelayAsync(TimeSpan.FromMinutes(1), cancellation.Token));
+		{
+			await timer.DelayAsync(TimeSpan.FromMinutes(1), cancellation.Token);
+		});
 	}
 
 	[Test]

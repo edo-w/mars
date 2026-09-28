@@ -1,16 +1,16 @@
 using Mars.Core.App.Config;
 using Mars.Core.Lib;
-using Mars.Local.Db.Migrations;
+using Mars.Local.Db.Migrations.State;
 using Microsoft.Data.Sqlite;
 
 namespace Mars.Local.Db;
 
-public class DbSession
+public class StateDbSession
 {
 	private readonly string connectionString;
 	private readonly IVfs vfs;
 
-	public DbSession(Config config, string marsHome, IVfs vfs)
+	public StateDbSession(Config config, string marsHome, IVfs vfs)
 	{
 		this.vfs = vfs;
 

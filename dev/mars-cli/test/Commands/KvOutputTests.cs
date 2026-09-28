@@ -32,10 +32,12 @@ public class KvOutputTests
 
 		var exitCode = await handler.HandleAsync(context);
 
-		var expected = string.Join(output.NewLine,
+		var expected = string.Join(
+			output.NewLine,
 			"/foobar    v1  text   1  no   2026-09-27 11:09:54",
 			"/mysecret  v1  text  12  yes  2026-09-27 11:11:09",
-			"");
+			""
+		);
 		Assert.AreEqual(0, exitCode);
 		Assert.AreEqual(expected, output.ToString());
 	}

@@ -16,8 +16,13 @@ public class ConfigTests
 		Assert.Throws<UnprocessableException>(() => new ConfigType(Guid.NewGuid(), "Application", "app"));
 
 		var app = new ConfigType(Guid.CreateVersion7(), "Application", "team");
-		var environment = new Environment(Guid.CreateVersion7(), "dev", app.DefaultNamespace,
-			new Dictionary<string, string>());
+		var environment = new Environment(
+			Guid.CreateVersion7(),
+			"dev",
+			app.DefaultNamespace,
+			new Dictionary<string,
+			string>()
+		);
 
 		Assert.AreEqual("team/dev", environment.FullName);
 	}

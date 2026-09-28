@@ -7,9 +7,9 @@ namespace Mars.Local.App.LocalEnvironment;
 
 public class LocalEnvironmentRepo
 {
-	private readonly DbSession session;
+	private readonly StateDbSession session;
 
-	public LocalEnvironmentRepo(DbSession session)
+	public LocalEnvironmentRepo(StateDbSession session)
 	{
 		this.session = session;
 	}
@@ -17,8 +17,18 @@ public class LocalEnvironmentRepo
 	public void Create(EnvironmentModel model)
 	{
 		const string sql = """
-            INSERT INTO environment (id, namespace, name, properties_json)
-            VALUES (@Id, @Namespace, @Name, @PropertiesJson)
+            INSERT INTO environment (
+                id,
+                namespace,
+                name,
+                properties_json
+            )
+            VALUES (
+                @Id,
+                @Namespace,
+                @Name,
+                @PropertiesJson
+            )
             """;
 		var parameters = new
 		{
@@ -51,7 +61,9 @@ public class LocalEnvironmentRepo
                 name AS Name,
                 properties_json AS PropertiesJson
             FROM environment
-            ORDER BY namespace, name
+            ORDER BY
+                namespace,
+                name
             """;
 
 		using var connection = this.session.Open();

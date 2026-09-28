@@ -41,6 +41,9 @@ public static class CliCommands
 		var lockCommand = new LockCommand(container, environment);
 		root.Subcommands.Add(lockCommand);
 
+		var workflowCommand = new WfCommand(container);
+		root.Subcommands.Add(workflowCommand);
+
 		return root;
 	}
 }

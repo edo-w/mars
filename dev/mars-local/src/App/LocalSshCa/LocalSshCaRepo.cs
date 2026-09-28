@@ -7,9 +7,9 @@ namespace Mars.Local.App.LocalSshCa;
 
 public class LocalSshCaRepo
 {
-	private readonly DbSession session;
+	private readonly StateDbSession session;
 
-	public LocalSshCaRepo(DbSession session)
+	public LocalSshCaRepo(StateDbSession session)
 	{
 		this.session = session;
 	}

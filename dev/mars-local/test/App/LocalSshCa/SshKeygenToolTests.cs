@@ -17,7 +17,7 @@ public class SshKeygenToolTests
 		var config = new Config(Guid.CreateVersion7(), "app", "app");
 		var vfs = new Mock<IVfs>();
 		var marsHome = Path.Combine(TestContext.CurrentContext.WorkDirectory, "test-state", "mars-ssh-keygen-test");
-		var database = new DbSession(config, marsHome, vfs.Object);
+		var database = new StateDbSession(config, marsHome, vfs.Object);
 		ProcessCommand? started = null;
 		var process = new Mock<IVProcess>();
 		process.Setup(item => item.RunAsync(It.IsAny<ProcessCommand>(), It.IsAny<CancellationToken>()))
@@ -27,7 +27,9 @@ public class SshKeygenToolTests
 		var tool = new SshKeygenTool(database, "mars.exe", [], vfs.Object, process.Object, timer);
 
 		var exception = Assert.ThrowsAsync<AppException>(async () =>
-			await tool.GenerateCaAsync("default", "sensitive-passphrase"));
+		{
+			await tool.GenerateCaAsync("default", "sensitive-passphrase");
+		});
 
 		Assert.IsNotNull(exception);
 		Assert.IsTrue(exception!.Message.Contains("simulated failure", StringComparison.Ordinal));

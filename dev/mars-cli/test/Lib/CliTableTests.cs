@@ -18,10 +18,12 @@ public class CliTableTests
 
 		await table.WriteAsync(output);
 
-		var expected = string.Join(output.NewLine,
+		var expected = string.Join(
+			output.NewLine,
 			"a      2  no   x",
 			"long  12  yes  y",
-			"");
+			""
+		);
 		Assert.AreEqual(expected, output.ToString());
 	}
 }

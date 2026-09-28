@@ -1,0 +1,8 @@
+{
+  "invalid_message": "WFPROTO001",
+  "unknown_request": "WFPROTO002",
+  "message_after_return": "WFPROTO003",
+  "invalid_return": "WFPROTO004",
+  "unknown_message_type": "WFPROTO005",
+  "missing_return": "WFPROTO006"
+}

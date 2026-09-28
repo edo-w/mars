@@ -7,10 +7,10 @@ namespace Mars.Local.App.LocalNode;
 
 public class LocalNodeRepo
 {
-	private readonly DbSession session;
+	private readonly StateDbSession session;
 	private readonly IVTimer timer;
 
-	public LocalNodeRepo(DbSession session, IVTimer timer)
+	public LocalNodeRepo(StateDbSession session, IVTimer timer)
 	{
 		this.session = session;
 		this.timer = timer;
@@ -241,9 +241,20 @@ public class LocalNodeRepo
 	public void SetProperty(Guid environmentId, NodePropertyModel model, string contextJson)
 	{
 		const string sql = """
-            INSERT INTO node_property (node_id, key, value_json)
-            VALUES (@NodeId, @Key, @ValueJson)
-            ON CONFLICT (node_id, key)
+            INSERT INTO node_property (
+                node_id,
+                key,
+                value_json
+            )
+            VALUES (
+                @NodeId,
+                @Key,
+                @ValueJson
+            )
+            ON CONFLICT (
+                node_id,
+                key
+            )
             DO UPDATE SET value_json = excluded.value_json
             """;
 		var parameters = new
@@ -293,8 +304,14 @@ public class LocalNodeRepo
 	public void AddTag(Guid environmentId, NodeTagModel model, string contextJson)
 	{
 		const string sql = """
-            INSERT OR IGNORE INTO node_tag (node_id, tag)
-            VALUES (@NodeId, @Tag)
+            INSERT OR IGNORE INTO node_tag (
+                node_id,
+                tag
+            )
+            VALUES (
+                @NodeId,
+                @Tag
+            )
             """;
 		var parameters = new
 		{
@@ -355,7 +372,9 @@ public class LocalNodeRepo
                 create_date AS CreateDate
             FROM node_event
             WHERE environment_id = @EnvironmentId
-            ORDER BY create_date, id
+            ORDER BY
+                create_date,
+                id
             """;
 		const string byNodeSql = """
             SELECT
@@ -368,7 +387,9 @@ public class LocalNodeRepo
             FROM node_event
             WHERE environment_id = @EnvironmentId
                 AND node_id = @NodeId
-            ORDER BY create_date, id
+            ORDER BY
+                create_date,
+                id
             """;
 		var parameters = new
 		{

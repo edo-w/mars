@@ -81,10 +81,12 @@ public class SshCaIssueCommandTests
 		services.AddTransient<SshCaIssueCommandHandler>();
 		using var container = services.BuildServiceProvider();
 		var command = CliCommands.Create(container);
-		var parsed = command.Parse([
-			"sshca", "issue", "--name", "main", "--user", "deploy",
-			"--identity", "deployment-42", "--output", outputPath, "--env", "team/prod",
-		]);
+		var parsed = command.Parse(
+			[
+				"sshca", "issue", "--name", "main", "--user", "deploy",
+				"--identity", "deployment-42", "--output", outputPath, "--env", "team/prod",
+			]
+		);
 
 		var exitCode = await parsed.InvokeAsync();
 

@@ -30,8 +30,9 @@ public class PathCommandHandler
 		var configPath = Path.Combine(location.Root, "mars.yml");
 		var checkoutDirectory = Path.Combine(location.Root, ".mars");
 		var selectedEnvironmentPath = Path.Combine(checkoutDirectory, "selected-environment");
-		var marsHome = DbSession.ResolveHome(this.process);
-		var database = new DbSession(location.Config, marsHome, this.vfs);
+		var marsHome = StateDbSession.ResolveHome(this.process);
+		var database = new StateDbSession(location.Config, marsHome, this.vfs);
+		var workflowDatabase = new WorkflowDbSession(marsHome, location.Config.Id);
 		var environmentDirectory = Path.Combine(database.AppDirectory, "env");
 		var temporaryDirectory = Path.Combine(database.AppDirectory, "tmp");
 		var paths = new CliTable();
@@ -42,6 +43,8 @@ public class PathCommandHandler
 		this.AddFileIfExists(paths, "environment", selectedEnvironmentPath);
 		this.AddDirectoryIfExists(paths, "app_state", database.AppDirectory);
 		this.AddFileIfExists(paths, "state_db", database.DatabasePath);
+		this.AddFileIfExists(paths, "workflow_db", workflowDatabase.DatabasePath);
+		this.AddDirectoryIfExists(paths, "workflow_logs", workflowDatabase.LogDirectory);
 		this.AddDirectoryIfExists(paths, "environments", environmentDirectory);
 		this.AddDirectoryIfExists(paths, "temp_dir", temporaryDirectory);
 

@@ -11,4 +11,8 @@
     <Project Path="mars-cli/src/Mars.Cli.csproj" />
     <Project Path="mars-cli/test/Mars.Cli.Tests.csproj" />
   </Folder>
+  <Folder Name="/mars-workflow/">
+    <Project Path="mars-workflow/src/Mars.Workflow.csproj" />
+    <Project Path="mars-workflow/test/Mars.Workflow.Tests.csproj" />
+  </Folder>
 </Solution>

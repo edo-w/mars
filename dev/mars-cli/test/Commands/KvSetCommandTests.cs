@@ -36,7 +36,7 @@ public class KvSetCommandTests
 		var configService = new ConfigService(vfs);
 		var config = await configService.InitAsync(root, "KV Command Test", "app");
 		var marsHome = Path.Combine(root, ".mars");
-		var database = new DbSession(config, marsHome, vfs);
+		var database = new StateDbSession(config, marsHome, vfs);
 		database.Initialize();
 
 		var environmentRepo = new LocalEnvironmentRepo(database);
@@ -120,7 +120,7 @@ public class KvSetCommandTests
 		var configService = new ConfigService(vfs);
 		var config = await configService.InitAsync(root, "KV Command Test", "app");
 		var marsHome = Path.Combine(root, ".mars");
-		var database = new DbSession(config, marsHome, vfs);
+		var database = new StateDbSession(config, marsHome, vfs);
 		database.Initialize();
 
 		var environmentRepo = new LocalEnvironmentRepo(database);

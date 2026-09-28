@@ -23,13 +23,17 @@ public class Program
 				return 0;
 			}
 
-			var hasArguments = args.Length > 0;
+			var commandIndex = FindCommandIndex(args);
+			var hasArguments = commandIndex < args.Length;
+			var commandName = hasArguments ? args[commandIndex] : null;
 			var isHelp = args.Contains("--help", StringComparer.Ordinal)
 				|| args.Contains("-h", StringComparer.Ordinal);
 			var isVersion = args.Contains("--version", StringComparer.Ordinal);
-			var isInit = hasArguments && args[0] == "init";
-			var isPath = hasArguments && args[0] == "path";
-			var needsApp = hasArguments && !isInit && !isPath && !isHelp && !isVersion;
+			var isInit = commandName == "init";
+			var isPath = commandName == "path";
+			var isWorkflow = commandName == "wf";
+			var needsApp = hasArguments && !isInit && !isPath && !isWorkflow
+				&& !isHelp && !isVersion;
 
 			using var container = await Container.CreateAsync(needsApp);
 			var rootCommand = CliCommands.Create(container);
@@ -45,5 +49,32 @@ public class Program
 
 			return 1;
 		}
+	}
+
+	private static int FindCommandIndex(string[] arguments)
+	{
+		for (var index = 0; index < arguments.Length; index++)
+		{
+			var argument = arguments[index];
+			if (argument == "--debug")
+			{
+				continue;
+			}
+
+			if (argument == "--env")
+			{
+				index++;
+				continue;
+			}
+
+			if (argument.StartsWith("--env=", StringComparison.Ordinal))
+			{
+				continue;
+			}
+
+			return index;
+		}
+
+		return arguments.Length;
 	}
 }

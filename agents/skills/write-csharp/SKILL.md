@@ -138,10 +138,31 @@ Keep and propagate cancellation tokens at boundaries that provide real cancellat
 
 Favor named intermediate values over nested construction or long expressions.
 Declare SQL as readable multiline text, declare parameter objects separately,
-then call the repository method. Put each parameter on its own line when a
-method signature or call no longer reads clearly on one line. Use blank lines
+then call the repository method. Keep a call or declaration on one line when it
+reads clearly. When a call, constructor, assertion, or parameter list spans
+multiple lines, put the opening `(` at the end of its own line, put every
+argument or parameter on a separate line, and put the closing `)` on its own
+line. Do not leave some arguments beside `(` or `)` while wrapping others.
+Use the same layout for nested multiline calls.
+
+```csharp
+Assert.AreEqual(
+	WorkflowProtocolCodes.InvalidMessage,
+	codes["invalid_message"]!.GetValue<string>()
+);
+
+var export = new ModuleExport(
+	"double",
+	ModuleExportKind.Task,
+	input,
+	WorkflowType.Void
+);
+```
+
+Use blank lines
 to group setup, execution, and results. Give collection transformations a
 name before returning them when the transformation has several steps.
+
 Use a blank line whenever the method moves to a new operation, even in a
 short method. Group related declarations together, then separate validation,
 construction, persistence, mapping, output, and return. Do not add comments
@@ -154,6 +175,12 @@ assign it to a named local before the call. Keep `if` conditions short; name
 the result of any collection query or compound check before testing it.
 Use a named result object when a method returns several related values.
 Avoid tuple return types and deconstruction in application interfaces.
+
+For callbacks and delegates, keep a simple expression lambda on one line when
+it fits. If the body needs wrapping, use a block with braces and a semicolon
+for each statement. The callback may begin on the call's first line, as in
+`Assert.ThrowsAsync<SomeException>(async () => { ... });`. Do not put `=>` on
+one line and a bare expression on the next.
 
 Do not use `?? throw` or conditional operators for side effects. Use an
 explicit `if` for validation and failure paths.

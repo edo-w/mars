@@ -5,10 +5,10 @@ namespace Mars.Local.App.LocalKv;
 
 public class LocalKvObjectStore
 {
-	private readonly DbSession session;
+	private readonly StateDbSession session;
 	private readonly IVfs vfs;
 
-	public LocalKvObjectStore(DbSession session, IVfs vfs)
+	public LocalKvObjectStore(StateDbSession session, IVfs vfs)
 	{
 		this.session = session;
 		this.vfs = vfs;

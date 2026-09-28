@@ -1,0 +1,30 @@
+{
+  "name": "@mars/workflow-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./stdio": {
+      "types": "./src/stdio.ts",
+      "default": "./dist/stdio.js"
+    },
+    "./protocol-errors": {
+      "types": "./src/protocol-errors.ts",
+      "default": "./dist/protocol-errors.js"
+    }
+  },
+  "scripts": {
+    "build": "bun build ./src/index.ts ./src/stdio.ts ./src/protocol-errors.ts --target=node --outdir=dist",
+    "check": "bunx --bun tsc --noEmit",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.14",
+    "typescript": "^5.9.3"
+  }
+}

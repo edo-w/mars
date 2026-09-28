@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Mars.Workflow</RootNamespace>
+    <AssemblyName>Mars.Workflow</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../mars-core/src/Mars.Core.csproj" />
+  </ItemGroup>
+</Project>

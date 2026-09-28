@@ -14,9 +14,11 @@ using Mars.Local.App.LocalLock;
 using Mars.Local.App.LocalNode;
 using Mars.Local.App.LocalSecrets;
 using Mars.Local.App.LocalSshCa;
+using Mars.Local.App.LocalWorkflow;
 using Mars.Local.Db;
 using Mars.Local.Lib;
 using Microsoft.Extensions.DependencyInjection;
+using Mars.Workflow.App.Workflow;
 
 namespace Mars.Cli.Boot;
 
@@ -36,6 +38,8 @@ public static class Container
 		services.AddSingleton<IVTimer>(timer);
 		services.AddSingleton<IVProcess>(process);
 		services.AddSingleton(configService);
+		services.AddSingleton<IWorkflowStorageProvider, LocalWorkflowStorageProvider>();
+		services.AddTransient<WorkflowService>();
 
 		if (needsApp)
 		{
@@ -43,8 +47,8 @@ public static class Container
 			var location = await configService.FindAsync(currentDirectory);
 			var appRoot = location.Root;
 			var config = location.Config;
-			var marsHome = DbSession.ResolveHome(process);
-			var database = new DbSession(config, marsHome, vfs);
+			var marsHome = StateDbSession.ResolveHome(process);
+			var database = new StateDbSession(config, marsHome, vfs);
 			database.Initialize();
 
 			var selection = new LocalEnvironmentSelectionStore(appRoot, vfs);
@@ -81,13 +85,15 @@ public static class Container
 				prefix = [commandLine[0]];
 			}
 
-			services.AddSingleton<ISshKeygenTool>(provider =>
-			{
-				var session = provider.GetRequiredService<DbSession>();
-				var tool = new SshKeygenTool(session, executable, prefix, vfs, process, timer);
+			services.AddSingleton<ISshKeygenTool>(
+				provider =>
+				{
+					var session = provider.GetRequiredService<StateDbSession>();
+					var tool = new SshKeygenTool(session, executable, prefix, vfs, process, timer);
 
-				return tool;
-			});
+					return tool;
+				}
+			);
 			services.AddSingleton<ISshCaService, LocalSshCaService>();
 		}
 
@@ -100,6 +106,11 @@ public static class Container
 	{
 		services.AddTransient<InitCommandHandler>();
 		services.AddTransient<PathCommandHandler>();
+		services.AddTransient<WfRunCommandHandler>();
+		services.AddTransient<WfListCommandHandler>();
+		services.AddTransient<WfLogsCommandHandler>();
+		services.AddTransient<WfCheckCommandHandler>();
+		services.AddTransient<WfGraphCommandHandler>();
 
 		services.AddTransient<EnvCreateCommandHandler>();
 		services.AddTransient<EnvListCommandHandler>();

@@ -12,7 +12,7 @@ public interface ISshKeygenTool
 
 public class SshKeygenTool : ISshKeygenTool
 {
-	private readonly DbSession database;
+	private readonly StateDbSession database;
 	private readonly string helperExecutable;
 	private readonly IReadOnlyList<string> helperPrefixArguments;
 	private readonly IVfs vfs;
@@ -20,7 +20,7 @@ public class SshKeygenTool : ISshKeygenTool
 	private readonly IVTimer timer;
 
 	public SshKeygenTool(
-		DbSession database,
+		StateDbSession database,
 		string helperExecutable,
 		IReadOnlyList<string> helperPrefixArguments,
 		IVfs vfs,
@@ -81,12 +81,35 @@ public class SshKeygenTool : ISshKeygenTool
 				await writer.WriteAsync(caPrivateKey);
 			}
 
-			await this.RunAsync(directory, null, "-q", "-t", "ed25519", "-f", keyPath,
-				"-N", "", "-C", identity);
+			await this.RunAsync(
+				directory,
+				null,
+				"-q",
+				"-t",
+				"ed25519",
+				"-f",
+				keyPath,
+				"-N",
+				"",
+				"-C",
+				identity
+			);
 
-			await this.RunWithAskpassAsync(directory, passphrase, 1,
-				"-q", "-I", identity, "-n", principals, "-s", caPath,
-				"-V", "+5m", keyPath + ".pub");
+			await this.RunWithAskpassAsync(
+				directory,
+				passphrase,
+				1,
+				"-q",
+				"-I",
+				identity,
+				"-n",
+				principals,
+				"-s",
+				caPath,
+				"-V",
+				"+5m",
+				keyPath + ".pub"
+			);
 
 			var privateKey = await this.vfs.ReadTextAsync(keyPath);
 			var certificate = await this.vfs.ReadTextAsync(keyPath + "-cert.pub");
