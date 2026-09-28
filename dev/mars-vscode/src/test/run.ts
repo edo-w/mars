@@ -1,4 +1,4 @@
-import { readdir } from 'node:fs/promises';
+import { mkdir, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import {
   downloadAndUnzipVSCode,
@@ -10,6 +10,8 @@ async function main(): Promise<void> {
   const extensionRoot = process.cwd();
   const repoRoot = path.resolve(extensionRoot, '../..');
   const cachePath = path.join(repoRoot, '.cache', 'vscode-test');
+  await mkdir(cachePath, { recursive: true });
+
   const vscodeExecutablePath = await downloadAndUnzipVSCode({
     version: 'stable',
     cachePath,
